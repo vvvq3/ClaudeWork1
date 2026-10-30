@@ -107,7 +107,7 @@ function fireCastleProjectile(team, def, kind, unitType, target) {
     targetY: getUnitModelCenterY(target),
     progress: 0,
     speed: unitType.projectileSpeed * kind.speedMul,
-    damage: stats.atk,
+    damage: stats.atk * (kind.dmgMult || 1),
     splash: unitType.splash || 0,
     multiTarget: unitType.multiTarget || 0,
     arcHeight: kind.arc
@@ -178,13 +178,6 @@ function applyCastleUpgrade(team) {
   spawnFloatingText(fx.x + (isPlayer ? 20 : -20), fx.y - 8, `+${CASTLE_UPGRADE_HP} HP`, '#4ade80');
   SoundFX.play('upgrade');
 
-  const row = document.getElementById(isPlayer ? 'playerBuffsRow' : 'enemyBuffsRow');
-  if (row) {
-    const chip = document.createElement('span');
-    chip.className = 'buff-chip ' + (isPlayer ? 'buff-player' : 'buff-enemy');
-    chip.textContent = `Замок: ${up.name}`;
-    row.appendChild(chip);
-  }
   return true;
 }
 

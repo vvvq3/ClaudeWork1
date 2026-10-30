@@ -114,7 +114,7 @@ function castleTooltipHTML() {
     <div class="tt-title">Улучшение замка (${lvl} / ${CASTLE_UPGRADES.length})</div>
     <div class="tt-role">Усиливает гарнизон и добавляет здоровье</div>
     <ul class="tt-notes tt-ladder">${rows}</ul>
-    <ul class="tt-notes"><li>Каждое улучшение: +${CASTLE_UPGRADE_HP} здоровья замка</li><li>Гарнизон использует ваши улучшения юнитов</li></ul>
+    <ul class="tt-notes"><li>Каждое улучшение: +${CASTLE_UPGRADE_HP} здоровья замка</li><li>Гарнизон использует ваши улучшения юнитов</li><li>Маг и катапульта в гарнизоне вдвое слабее обычных и бьют вдвое ближе</li></ul>
     <div class="tt-key">Клавиша ${CASTLE_KEY}</div>`;
 }
 
@@ -319,13 +319,7 @@ function selectUpgradeCard(index) {
   chosen.applyToTeam('player');
   SoundFX.play('upgrade');
 
-  const buffsRow = document.getElementById('playerBuffsRow');
-  if (buffsRow && chosen.shortTag) {
-    const badge = document.createElement('span');
-    badge.className = 'buff-chip buff-player';
-    badge.textContent = chosen.shortTag;
-    buffsRow.appendChild(badge);
-  }
+  addBuffChip('player', chosen.shortTag);
 
   gameState.pendingUpgrades = Math.max(0, gameState.pendingUpgrades - 1);
   gameState.appliedUpgradesCount++;

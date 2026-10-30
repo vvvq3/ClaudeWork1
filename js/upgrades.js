@@ -42,6 +42,18 @@ function generateThreeUpgradeCards(forTeam = 'player') {
   return chosenTypes.map(type => createUpgradeCardObject(type, randInt, pickEligibleUnit));
 }
 
+// The chips above the castles show the last three cards each side has picked.
+const MAX_BUFF_CHIPS = 3;
+function addBuffChip(team, text) {
+  const row = document.getElementById(team === 'player' ? 'playerBuffsRow' : 'enemyBuffsRow');
+  if (!row || !text) return;
+  const chip = document.createElement('span');
+  chip.className = 'buff-chip ' + (team === 'player' ? 'buff-player' : 'buff-enemy');
+  chip.textContent = text;
+  row.appendChild(chip);
+  while (row.children.length > MAX_BUFF_CHIPS) row.removeChild(row.firstChild);
+}
+
 // Visual feedback for card effects (position of the castle that receives them).
 function castleFxPos(team) {
   const { leftCastleX, rightCastleX, roadCenterY } = getCastlePositions();
@@ -298,13 +310,7 @@ function applyRandomUpgradeForEnemy() {
   gameState.aiUpgradesCount++;
   gameState.lastEnemyUpgradeText = chosen.aiSummary;
 
-  const enemyBuffsRow = document.getElementById('enemyBuffsRow');
-  if (enemyBuffsRow && chosen.shortTag) {
-    const badge = document.createElement('span');
-    badge.className = 'buff-chip buff-enemy';
-    badge.textContent = chosen.shortTag;
-    enemyBuffsRow.appendChild(badge);
-  }
+  addBuffChip('enemy', chosen.shortTag);
 
   return chosen;
 }

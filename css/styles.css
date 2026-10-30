@@ -509,3 +509,10 @@ body {
   font-weight: 600;
   line-height: 1.3;
 }
+
+/* low windows: keep the result screen's buttons on screen */
+@media (max-height: 640px) {
+  #mvpUnitBanner { display: none; }
+  #gameOverModal .wood-panel { padding-top: 0.6rem; padding-bottom: 0.6rem; }
+  #gameOverModal .level-picker { margin-bottom: 0.5rem; }
+}

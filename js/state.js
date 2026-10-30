@@ -20,11 +20,13 @@ const CASTLE_SLOTS = [
   { x: -2,  y: 17 }     // 7 upgrade 5: commander in the yard
 ];
 // What each garrison member shoots with (stats come from the matching unit type).
+// Reach is 25% shorter than the first version (570 / 620 / 480 / 640); the garrison mage and catapult are
+// weaker on top of that: half the reach again and half the damage (dmgMult).
 const CASTLE_DEFENDER_KINDS = {
-  archer:      { unit: 'archer',      range: 570, muzzleY: -22, arc: 36, speedMul: 1.15 },
-  crossbowman: { unit: 'crossbowman', range: 620, muzzleY: -22, arc: 12, speedMul: 1.1 },
-  mage:        { unit: 'mage',        range: 480, muzzleY: -34, arc: 18, speedMul: 1.0 },
-  catapult:    { unit: 'catapult',    range: 640, muzzleY: -40, arc: 90, speedMul: 1.0 },
+  archer:      { unit: 'archer',      range: 428, muzzleY: -22, arc: 36, speedMul: 1.15 },
+  crossbowman: { unit: 'crossbowman', range: 465, muzzleY: -22, arc: 12, speedMul: 1.1 },
+  mage:        { unit: 'mage',        range: 180, muzzleY: -34, arc: 18, speedMul: 1.0, dmgMult: 0.5 },
+  catapult:    { unit: 'catapult',    range: 240, muzzleY: -40, arc: 90, speedMul: 1.0, dmgMult: 0.5 },
   commander:   { unit: 'commander' }   // no weapon: provides the inspiring aura
 };
 // Castle upgrade ladder: price, new garrison member, slot they stand in.

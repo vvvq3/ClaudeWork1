@@ -48,9 +48,9 @@ function aiBaseWeight(id, t, level) {
 
 const AI_LEVELS = {
   // `waste` is a handicap: the easy AI loses that share of its income (it "wastes" the gold)
-  easy:   { think: 1.2, counterK: 0,   buffExp: 0,   diversityK: 0,   waves: false, tactics: false, castle: 0.1, commander: 0,   smartCards: false, mageFrom: 90, baseBias: 1,   waste: 0.35 },
-  normal: { think: 0.5, counterK: 0.7, buffExp: 0.3, diversityK: 0.3, waves: false, tactics: false, castle: 0.3, commander: 0,   smartCards: false, mageFrom: 30, baseBias: 1,   waste: 0 },
-  hard:   { think: 0.28, counterK: 2.3, buffExp: 1.4, diversityK: 1.4, waves: true,  tactics: true,  castle: 1.0,  commander: 2.2, smartCards: true,  mageFrom: 0,  baseBias: 0.15 }
+  easy:   { think: 1.2, counterK: 0,   buffExp: 0,   diversityK: 0,   waves: false, tactics: false, castle: 0.5, commander: 0,   smartCards: false, mageFrom: 90, baseBias: 1,   waste: 0.35 },
+  normal: { think: 0.5, counterK: 0.7, buffExp: 0.3, diversityK: 0.3, waves: false, tactics: false, castle: 1.6, commander: 0,   smartCards: false, mageFrom: 30, baseBias: 1,   waste: 0 },
+  hard:   { think: 0.28, counterK: 2.3, buffExp: 1.4, diversityK: 1.4, waves: true,  tactics: true,  castle: 3.2,  commander: 2.2, smartCards: true,  mageFrom: 0,  baseBias: 0.15 }
 };
 
 function aiUnitsOf(team) {
@@ -203,9 +203,9 @@ function createAI(team, level = 'hard', options = {}) {
     }
     // castle upgrade: mostly a defensive investment
     const level = teamCastleLevel(team);
-    if (cfg.castle > 0 && level < CASTLE_UPGRADES.length && p.t > 45 && ai.mode !== 'rush') {
+    if (cfg.castle > 0 && level < CASTLE_UPGRADES.length && p.t > 25 && ai.mode !== 'rush') {
       const up = CASTLE_UPGRADES[level];
-      let w = cfg.castle * ({ defend: 2.6, turtle: 1.6, balance: 0.7, counter: 0.7, push: 0.25 }[ai.mode] || 0.6);
+      let w = cfg.castle * ({ defend: 2.4, turtle: 2.2, balance: 1.3, counter: 1.1, push: 0.6 }[ai.mode] || 1);
       if (p.castleRatio < 0.7) w *= 1.4;
       if (up.cost > reach) w *= 0.12;
       list.push({ kind: 'castle', id: 'castle', cost: up.cost, w });
