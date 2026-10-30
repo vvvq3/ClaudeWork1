@@ -4,7 +4,7 @@
 const UPGRADE_INTERVAL = 20; // Every 20 seconds 3 cards appear & game pauses
 const GOLD_TICK_INTERVAL = 0.25; // +1 coin per 0.25s = +4 coins/sec
 const ROAD_HALF_WIDTH = 72; // 2x wider solid sandy road
-const CORPSE_DURATION = 15.0; // Blood puddle & unique corpse remain for 15 seconds
+const CORPSE_DURATION = 15.0; // fallen units stay on the road for 15 seconds
 
 let gameState = null;
 
@@ -92,6 +92,8 @@ function createInitialState() {
     particles: [],
     clashes: [],
     floatingTexts: [],
+    bolts: [],   // lightning flashes (visual only)
+    flash: 0,    // full-screen flash strength (visual only)
 
     // Detailed per-unit statistics for Player
     unitBattleStats: createUnitBattleStatsMap(),

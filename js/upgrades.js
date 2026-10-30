@@ -42,6 +42,12 @@ function generateThreeUpgradeCards(forTeam = 'player') {
   return chosenTypes.map(type => createUpgradeCardObject(type, randInt, pickEligibleUnit));
 }
 
+// Visual feedback for card effects (position of the castle that receives them).
+function castleFxPos(team) {
+  const { leftCastleX, rightCastleX, roadCenterY } = getCastlePositions();
+  return { x: team === 'player' ? leftCastleX - 10 : rightCastleX + 10, y: roadCenterY - 70 };
+}
+
 function createUpgradeCardObject(type, randInt, pickUnit) {
   if (type === 'gold_rate') {
     const bonusPerSec = [1, 2, 3][randInt(0, 2)];
@@ -53,13 +59,11 @@ function createUpgradeCardObject(type, randInt, pickUnit) {
       bigValue: `+${bonusPerSec}/сек`,
       subtitle: 'Скорость монет',
       shortTag: `+${bonusPerSec}/с 🪙`,
-      iconSVG: `<svg viewBox="0 0 64 64" class="w-12 h-12 mx-auto drop-shadow">
-        <path d="M20 12 H44 L36 30 L44 48 H20 L28 30 Z" fill="#fef08a" stroke="#451a03" stroke-width="3"/>
-        <circle cx="45" cy="44" r="10" fill="#facc15" stroke="#451a03" stroke-width="2.5"/>
-      </svg>`,
+      iconSVG: Art.icons.upgrade('gold_rate'),
       applyToTeam: (team) => {
         if (team === 'player') {
           gameState.goldPerTick = +(gameState.goldPerTick + bonusPerTick).toFixed(3);
+          Art.fx.coins(castleFxPos('player').x, castleFxPos('player').y + 30, 5);
           spawnFloatingText(180, canvasHeight * 0.45, `ДОБЫЧА +${bonusPerSec}/СЕК!`, '#fde047');
         } else {
           gameState.enemyGoldPerTick = +(gameState.enemyGoldPerTick + bonusPerTick).toFixed(3);
@@ -79,19 +83,16 @@ function createUpgradeCardObject(type, randInt, pickUnit) {
       bigValue: `+${coins} 🪙`,
       subtitle: 'Монет мгновенно',
       shortTag: `+${coins}🪙`,
-      iconSVG: `<svg viewBox="0 0 64 64" class="w-12 h-12 mx-auto drop-shadow">
-        <circle cx="24" cy="38" r="13" fill="#eab308" stroke="#451a03" stroke-width="2.8"/>
-        <circle cx="40" cy="36" r="13" fill="#facc15" stroke="#451a03" stroke-width="2.8"/>
-        <circle cx="32" cy="24" r="13" fill="#fde047" stroke="#451a03" stroke-width="2.8"/>
-        <text x="32" y="29" font-size="14" font-weight="900" fill="#713f12" text-anchor="middle">★</text>
-      </svg>`,
+      iconSVG: Art.icons.upgrade('instant_gold'),
       applyToTeam: (team) => {
         if (team === 'player') {
           gameState.gold += coins;
           gameState.stats.goldEarned += coins;
+          Art.fx.coins(castleFxPos('player').x, castleFxPos('player').y + 30, 10);
           spawnFloatingText(180, canvasHeight * 0.45, `+${coins} МОНЕТ!`, '#fde047');
         } else {
           gameState.enemyGold += coins;
+          Art.fx.coins(castleFxPos('enemy').x, castleFxPos('enemy').y + 30, 10);
           spawnFloatingText(canvasWidth - 180, canvasHeight * 0.42, `ИИ: +${coins} МОНЕТ!`, '#fde047');
         }
       },
@@ -107,17 +108,16 @@ function createUpgradeCardObject(type, randInt, pickUnit) {
       bigValue: `100% 💀`,
       subtitle: 'Убить всех на поле',
       shortTag: `Кара 💀`,
-      iconSVG: `<svg viewBox="0 0 64 64" class="w-12 h-12 mx-auto drop-shadow">
-        <polygon points="36,6 16,34 31,34 24,58 48,28 33,28" fill="#fde047" stroke="#451a03" stroke-width="2.8" stroke-linejoin="round"/>
-      </svg>`,
+      iconSVG: Art.icons.upgrade('wipe_enemies'),
       applyToTeam: (team) => {
         const targetTeam = team === 'player' ? 'enemy' : 'player';
         let killed = 0;
         for (let i = gameState.units.length - 1; i >= 0; i--) {
           const u = gameState.units[i];
           if (u.team === targetTeam) {
+            Art.fx.lightning(u.x, u.y - 8);
             spawnHitParticles(u.x, u.y - 12, '#fde047', 10);
-            spawnClashStarburst(u.x, u.y - 12);
+            spawnClashStarburst(u.x, u.y - 12, 'magic');
             spawnCorpse(u);
             if (targetTeam === 'enemy') gameState.stats.enemiesDefeated++;
             gameState.units.splice(i, 1);
@@ -125,6 +125,7 @@ function createUpgradeCardObject(type, randInt, pickUnit) {
           }
         }
         SoundFX.play('wipe');
+        gameState.flash = 1;
         if (team === 'player') {
           spawnFloatingText(canvasWidth * 0.5, canvasHeight * 0.42, `ВСЕ ВРАГИ УНИЧТОЖЕНЫ (${killed})!`, '#f87171');
         } else {
@@ -146,10 +147,7 @@ function createUpgradeCardObject(type, randInt, pickUnit) {
       bigValue: `-${pct}%`,
       subtitle: 'Дешевле найм',
       shortTag: `${shortName} -${pct}%🪙`,
-      iconSVG: `<svg viewBox="0 0 64 64" class="w-12 h-12 mx-auto drop-shadow">
-        <polygon points="14,32 34,12 52,12 52,30 32,50" fill="#4ade80" stroke="#14532d" stroke-width="3"/>
-        <circle cx="43" cy="21" r="3.5" fill="#14532d"/>
-      </svg>`,
+      iconSVG: Art.icons.upgrade('unit_discount', unit.id),
       applyToTeam: (team) => {
         const mods = team === 'player' ? gameState.unitMods : gameState.enemyUnitMods;
         mods[unit.id].costMult *= (1 - pct / 100);
@@ -174,16 +172,14 @@ function createUpgradeCardObject(type, randInt, pickUnit) {
       bigValue: `+${pct}%`,
       subtitle: 'Сила удара',
       shortTag: `${shortName} +${pct}%⚔️`,
-      iconSVG: `<svg viewBox="0 0 64 64" class="w-12 h-12 mx-auto drop-shadow">
-        <path d="M14 50 L48 14 L54 12 L52 18 L18 54 Z" fill="#e5e7eb" stroke="#450a0a" stroke-width="2.5"/>
-        <line x1="14" y1="38" x2="28" y2="52" stroke="#f59e0b" stroke-width="4" stroke-linecap="round"/>
-      </svg>`,
+      iconSVG: Art.icons.upgrade('unit_atk', unit.id),
       applyToTeam: (team) => {
         const mods = team === 'player' ? gameState.unitMods : gameState.enemyUnitMods;
         mods[unit.id].atkMult *= (1 + pct / 100);
         gameState.units.forEach(u => {
           if (u.team === team && u.type.id === unit.id) {
             u.atk = Math.max(1, Math.round(u.atk * (1 + pct / 100)));
+            Art.fx.sparkle(u.x, u.y - 24, 2);
           }
         });
         if (team === 'player') {
@@ -207,10 +203,7 @@ function createUpgradeCardObject(type, randInt, pickUnit) {
       bigValue: `+${pct}%`,
       subtitle: 'Здоровье бойца',
       shortTag: `${shortName} +${pct}%🛡️`,
-      iconSVG: `<svg viewBox="0 0 64 64" class="w-12 h-12 mx-auto drop-shadow">
-        <path d="M16 14 L32 8 L48 14 V32 C48 44 32 54 32 54 C32 54 16 44 16 32 Z" fill="#38bdf8" stroke="#0c4a6e" stroke-width="3"/>
-        <path d="M32 16 V46 M22 28 H42" stroke="#e0f2fe" stroke-width="4" stroke-linecap="round"/>
-      </svg>`,
+      iconSVG: Art.icons.upgrade('unit_hp', unit.id),
       applyToTeam: (team) => {
         const mods = team === 'player' ? gameState.unitMods : gameState.enemyUnitMods;
         mods[unit.id].hpMult *= (1 + pct / 100);
@@ -219,6 +212,7 @@ function createUpgradeCardObject(type, randInt, pickUnit) {
             const inc = Math.round(u.maxHp * (pct / 100));
             u.maxHp += inc;
             u.hp += inc;
+            Art.fx.sparkle(u.x, u.y - 24, 2);
           }
         });
         if (team === 'player') {
@@ -240,20 +234,19 @@ function createUpgradeCardObject(type, randInt, pickUnit) {
       bigValue: `+${pct}%`,
       subtitle: 'Макс. HP замка',
       shortTag: `Замок +${pct}%🏰`,
-      iconSVG: `<svg viewBox="0 0 64 64" class="w-12 h-12 mx-auto drop-shadow">
-        <rect x="16" y="24" width="32" height="28" rx="3" fill="#9ca3af" stroke="#1e293b" stroke-width="3"/>
-        <path d="M32 30 V44 M25 37 H39" stroke="#22c55e" stroke-width="4" stroke-linecap="round"/>
-      </svg>`,
+      iconSVG: Art.icons.upgrade('castle_max_hp'),
       applyToTeam: (team) => {
         if (team === 'player') {
           const boost = Math.round(gameState.playerCastleMaxHp * (pct / 100));
           gameState.playerCastleMaxHp += boost;
           gameState.playerCastleHp += boost;
+          Art.fx.sparkle(castleFxPos('player').x, castleFxPos('player').y, 8);
           spawnFloatingText(140, canvasHeight * 0.4, `ЗАМОК +${boost} HP!`, '#67e8f9');
         } else {
           const boost = Math.round(gameState.enemyCastleMaxHp * (pct / 100));
           gameState.enemyCastleMaxHp += boost;
           gameState.enemyCastleHp += boost;
+          Art.fx.sparkle(castleFxPos('enemy').x, castleFxPos('enemy').y, 8);
           spawnFloatingText(canvasWidth - 140, canvasHeight * 0.4, `ИИ ЗАМОК +${boost} HP!`, '#67e8f9');
         }
       },
@@ -269,18 +262,17 @@ function createUpgradeCardObject(type, randInt, pickUnit) {
     bigValue: `+${healPct}%`,
     subtitle: 'Лечение HP замка',
     shortTag: `Ремонт +${healPct}%❤️`,
-    iconSVG: `<svg viewBox="0 0 64 64" class="w-12 h-12 mx-auto drop-shadow">
-      <circle cx="32" cy="32" r="20" fill="#22c55e" stroke="#14532d" stroke-width="3"/>
-      <path d="M32 20 V44 M20 32 H44" stroke="#fff" stroke-width="5" stroke-linecap="round"/>
-    </svg>`,
+    iconSVG: Art.icons.upgrade('castle_heal'),
     applyToTeam: (team) => {
       if (team === 'player') {
         const healAmount = Math.round(gameState.playerCastleMaxHp * (healPct / 100));
         gameState.playerCastleHp = Math.min(gameState.playerCastleMaxHp, gameState.playerCastleHp + healAmount);
+        Art.fx.plus(castleFxPos('player').x, castleFxPos('player').y, 7);
         spawnFloatingText(140, canvasHeight * 0.4, `РЕМОНТ +${healAmount} HP!`, '#4ade80');
       } else {
         const healAmount = Math.round(gameState.enemyCastleMaxHp * (healPct / 100));
         gameState.enemyCastleHp = Math.min(gameState.enemyCastleMaxHp, gameState.enemyCastleHp + healAmount);
+        Art.fx.plus(castleFxPos('enemy').x, castleFxPos('enemy').y, 7);
         spawnFloatingText(canvasWidth - 140, canvasHeight * 0.4, `ИИ РЕМОНТ +${healAmount} HP!`, '#4ade80');
       }
     },
@@ -302,7 +294,7 @@ function applyRandomUpgradeForEnemy() {
   const enemyBuffsRow = document.getElementById('enemyBuffsRow');
   if (enemyBuffsRow && chosen.shortTag) {
     const badge = document.createElement('span');
-    badge.className = 'px-1.5 py-0.5 rounded bg-sky-950/90 border border-sky-400/70 text-sky-200 text-[10px] font-bold shadow';
+    badge.className = 'buff-chip buff-enemy';
     badge.textContent = chosen.shortTag;
     enemyBuffsRow.appendChild(badge);
   }

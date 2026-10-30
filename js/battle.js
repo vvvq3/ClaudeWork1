@@ -37,6 +37,7 @@ function createUnitEntity(team, unitType) {
     atkTimer: 0,
     state: 'walk',
     animPhase: Math.random() * Math.PI * 2,
+    seed: Math.random() * 6.28,
     attackAnim: 0,
     hitFlash: 0
   };
@@ -57,14 +58,18 @@ function spawnPlayerUnit(unitId) {
   }
   SoundFX.play('spawn');
 
-  gameState.units.push(createUnitEntity('player', unitType));
+  const spawned = createUnitEntity('player', unitType);
+  gameState.units.push(spawned);
+  Art.fx.dust(spawned.x - 6, spawned.y + 2, 3, 0.9);
   updateHUD();
 }
 
 function spawnEnemyUnit(unitId) {
   const unitType = UNIT_TYPES.find(u => u.id === unitId);
   if (!unitType) return;
-  gameState.units.push(createUnitEntity('enemy', unitType));
+  const spawned = createUnitEntity('enemy', unitType);
+  gameState.units.push(spawned);
+  Art.fx.dust(spawned.x + 6, spawned.y + 2, 3, 0.9);
 }
 
 
@@ -188,64 +193,6 @@ function updateCastleArchers(dt) {
   });
 }
 
-function spawnFloatingText(x, y, text, color = '#ffffff') {
-  gameState.floatingTexts.push({
-    x,
-    y,
-    text,
-    color,
-    alpha: 1,
-    vy: -26,
-    life: 0.95
-  });
-}
-
-function spawnHitParticles(x, y, color = '#fbbf24', count = 5) {
-  for (let i = 0; i < count; i++) {
-    const angle = Math.random() * Math.PI * 2;
-    const spd = 25 + Math.random() * 65;
-    gameState.particles.push({
-      x,
-      y,
-      vx: Math.cos(angle) * spd,
-      vy: Math.sin(angle) * spd - 16,
-      radius: 1.5 + Math.random() * 2,
-      color,
-      life: 0.22 + Math.random() * 0.22
-    });
-  }
-}
-
-function spawnClashStarburst(x, y) {
-  const exists = gameState.clashes.some(c => Math.abs(c.x - x) < 14 && c.life > 0.14);
-  if (!exists) {
-    gameState.clashes.push({
-      x,
-      y,
-      life: 0.22,
-      maxLife: 0.22,
-      scale: (0.85 + Math.random() * 0.35) * 0.78
-    });
-  }
-}
-
-function spawnCorpse(u) {
-  gameState.corpses.push({
-    x: u.x,
-    y: u.y,
-    team: u.team,
-    typeId: u.type.id,
-    radius: u.type.radius,
-    life: CORPSE_DURATION,
-    maxLife: CORPSE_DURATION,
-    bloodBlobs: [
-      { dx: 0, dy: 1.5, rx: u.type.radius * 1.25, ry: 4.5 },
-      { dx: -4.5, dy: 2.5, rx: u.type.radius * 0.75, ry: 3.2 },
-      { dx: 5, dy: 0.8, rx: u.type.radius * 0.8, ry: 3.4 }
-    ]
-  });
-}
-
 function recordPlayerStatDamage(sourceUnitTypeId, actualDamage, killedTarget) {
   if (!sourceUnitTypeId || !gameState.unitBattleStats[sourceUnitTypeId]) return;
   gameState.unitBattleStats[sourceUnitTypeId].damageDealt += Math.round(actualDamage);
@@ -275,6 +222,7 @@ function dealDamageToTarget(attackerTeam, sourceUnitTypeId, target, isCastle, ra
       }
       const { rightCastleX, roadCenterY } = getCastlePositions();
       spawnHitParticles(rightCastleX - 40, roadCenterY - 25, '#fbbf24', 6);
+      Art.fx.debris(rightCastleX - 40, roadCenterY - 25, 3);
       spawnClashStarburst(rightCastleX - 42, roadCenterY - 22);
       spawnFloatingText(rightCastleX - 35, roadCenterY - 65, `-${intDamage}`, '#f87171');
       if (gameState.enemyCastleHp <= 0) {
@@ -284,6 +232,7 @@ function dealDamageToTarget(attackerTeam, sourceUnitTypeId, target, isCastle, ra
       gameState.playerCastleHp = Math.max(0, Math.round(gameState.playerCastleHp - intDamage));
       const { leftCastleX, roadCenterY } = getCastlePositions();
       spawnHitParticles(leftCastleX + 40, roadCenterY - 25, '#fbbf24', 6);
+      Art.fx.debris(leftCastleX + 40, roadCenterY - 25, 3);
       spawnClashStarburst(leftCastleX + 42, roadCenterY - 22);
       spawnFloatingText(leftCastleX + 35, roadCenterY - 65, `-${intDamage}`, '#f87171');
       if (gameState.playerCastleHp <= 0) {
@@ -566,7 +515,7 @@ function updateBattlefield(dt) {
       if (p.splash > 0) {
         // Catapult boulder AoE damage (50% reduced against Knights!)
         spawnHitParticles(p.targetX, p.targetY, '#f97316', 12);
-        spawnClashStarburst(p.targetX, p.targetY);
+        spawnClashStarburst(p.targetX, p.targetY, 'boulder');
         foes.forEach(f => {
           if (Math.abs(f.x - p.targetX) <= p.splash + f.type.radius) {
             dealDamageToTarget(p.team, p.sourceUnitTypeId, f, false, p.damage, null, true);
@@ -592,7 +541,6 @@ function updateBattlefield(dt) {
   for (let i = gameState.units.length - 1; i >= 0; i--) {
     const u = gameState.units[i];
     if (u.hp <= 0) {
-      spawnHitParticles(u.x, getUnitModelCenterY(u), '#dc2626', 8);
       spawnCorpse(u);
       if (u.team === 'enemy') {
         gameState.stats.enemiesDefeated++;
@@ -610,27 +558,7 @@ function updateBattlefield(dt) {
     }
   }
 
-  for (let i = gameState.particles.length - 1; i >= 0; i--) {
-    const pt = gameState.particles[i];
-    pt.x += pt.vx * dt;
-    pt.y += pt.vy * dt;
-    pt.vy += 180 * dt;
-    pt.life -= dt;
-    if (pt.life <= 0) gameState.particles.splice(i, 1);
-  }
-
-  for (let i = gameState.clashes.length - 1; i >= 0; i--) {
-    const cl = gameState.clashes[i];
-    cl.life -= dt;
-    if (cl.life <= 0) gameState.clashes.splice(i, 1);
-  }
-
-  for (let i = gameState.floatingTexts.length - 1; i >= 0; i--) {
-    const ft = gameState.floatingTexts[i];
-    ft.y += ft.vy * dt;
-    ft.life -= dt;
-    ft.alpha = Math.max(0, ft.life / 0.95);
-    if (ft.life <= 0) gameState.floatingTexts.splice(i, 1);
-  }
+  // particles, starbursts, floating numbers, lightning (see js/art/fx.js)
+  updateEffects(dt);
 }
 

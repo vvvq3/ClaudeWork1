@@ -16,69 +16,57 @@
 <body class="w-screen h-screen flex flex-col justify-between select-none overflow-hidden">
 
   <!-- TOP HUD -->
-  <div class="fixed top-0 left-0 right-0 z-20 flex items-start justify-between px-3 pt-2.5 pointer-events-none gap-2">
-    
+  <div class="fixed top-0 left-0 right-0 z-20 flex flex-wrap sm:flex-nowrap items-start justify-between px-3 pt-2.5 pointer-events-none gap-x-2 gap-y-1.5">
+
     <!-- PLAYER CASTLE HP & BUFFS (LEFT) -->
-    <div class="pointer-events-auto flex flex-col w-[32%] max-w-[360px]">
-      <div class="relative h-9 sm:h-10 rounded-xl bg-[#271712] border-[3px] border-[#1c0f0b] shadow-lg overflow-hidden flex items-center">
-        <div id="playerHpBar" class="h-full bg-gradient-to-b from-[#ef4444] via-[#dc2626] to-[#991b1b] transition-all duration-200" style="width: 100%;"></div>
-        <div class="absolute inset-0 flex items-center justify-center px-2">
-          <span id="playerHpText" class="text-white font-extrabold text-xs sm:text-sm md:text-base tracking-wide text-outline truncate">
+    <div class="pointer-events-auto flex flex-col w-[48%] sm:w-[32%] max-w-[360px]">
+      <div class="hp-bar hp-red">
+        <div id="playerHpBar" class="hp-fill" style="width: 100%;"></div>
+        <div class="hp-text">
+          <span id="playerHpText" class="text-white font-extrabold text-[9px] min-[460px]:text-xs sm:text-sm md:text-base tracking-wide text-outline truncate">
             ЗАМОК ИГРОКА • 1000 / 1000 HP
           </span>
         </div>
       </div>
-      <div id="playerBuffsRow" class="flex flex-wrap gap-1 mt-1 min-h-[20px]"></div>
+      <div id="playerBuffsRow" class="flex flex-wrap gap-1 mt-1.5 min-h-[20px]"></div>
     </div>
 
-    <!-- CENTER GOLD & REVERSE UPGRADE TIMER -->
-    <div class="pointer-events-auto flex flex-col items-center">
-      <div class="wood-panel rounded-2xl px-4 sm:px-6 py-1.5 flex items-center gap-2 sm:gap-3">
-        <!-- Coin Icon -->
-        <div class="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-gradient-to-b from-[#fde047] to-[#ca8a04] border-2 border-[#713f12] shadow flex items-center justify-center shrink-0">
-          <div class="w-4 h-4 sm:w-5 sm:h-5 rounded-full bg-[#eab308] border border-[#fef08a] flex items-center justify-center font-black text-[#713f12] text-xs">★</div>
-        </div>
+    <!-- CENTER GOLD & UPGRADE TIMER -->
+    <div class="pointer-events-auto flex flex-col items-center order-last w-full sm:order-none sm:w-auto">
+      <div class="wood-panel gold-panel">
+        <div class="coin"></div>
         <div class="flex items-baseline gap-1.5">
-          <span id="goldAmountText" class="text-white font-black text-xl sm:text-2xl md:text-3xl text-outline tracking-tight">100</span>
-          <span id="goldRateText" class="text-[#fde047] font-bold text-xs sm:text-sm md:text-base text-outline-sm">(+4/сек)</span>
+          <span id="goldAmountText" class="gold-num text-outline">100</span>
+          <span id="goldRateText" class="gold-rate text-outline-sm">(+4/сек)</span>
         </div>
-        <!-- Controls -->
-        <div class="flex items-center gap-1.5 ml-1 pl-2 border-l border-[#7c5335]">
-          <button id="btnReadyUpgrade" class="hidden px-2.5 py-1 rounded-lg bg-gradient-to-b from-[#fbbf24] to-[#d97706] border-2 border-[#451a03] text-white font-extrabold text-xs text-outline-sm pulse-anim shadow">
+        <div class="hud-controls">
+          <button id="btnReadyUpgrade" class="hidden px-2.5 py-1 rounded-lg bg-gradient-to-b from-[#fbbf24] to-[#d97706] border-2 border-[#2a1810] text-white font-extrabold text-xs text-outline-sm pulse-anim shadow">
             🎁 КАРТЫ!
           </button>
-          <button id="btnToggleMute" title="Звук Вкл/Выкл" class="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-[#2c1a0e] hover:bg-[#3f2616] border border-[#7c5335] text-amber-200 flex items-center justify-center text-sm transition">
-            🔊
-          </button>
-          <button id="btnPauseGame" title="Пауза" class="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-[#2c1a0e] hover:bg-[#3f2616] border border-[#7c5335] text-amber-200 flex items-center justify-center text-sm transition">
-            ⏸️
-          </button>
-          <button id="btnRestartTop" title="Начать заново" class="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-[#2c1a0e] hover:bg-[#3f2616] border border-[#7c5335] text-amber-200 flex items-center justify-center text-sm transition">
-            🔄
-          </button>
+          <button id="btnToggleMute" title="Звук Вкл/Выкл" class="hud-btn">🔊</button>
+          <button id="btnPauseGame" title="Пауза" class="hud-btn">⏸️</button>
+          <button id="btnRestartTop" title="Начать заново" class="hud-btn">🔄</button>
         </div>
       </div>
-      <!-- Reverse Countdown Pill -->
-      <div class="mt-1 bg-[#23140b]/90 border border-[#5c3c24] rounded-full px-3 py-0.5 flex items-center gap-2 shadow">
+      <div class="timer-pill">
         <span class="text-[11px] sm:text-xs text-amber-200/90 font-bold tracking-wide">⏳ Осталось до карт: <strong id="upgradeCountdownText" class="text-white">20 сек</strong></span>
-        <div class="w-16 sm:w-24 h-2 bg-[#160c06] rounded-full overflow-hidden border border-[#472d1b]">
+        <div class="timer-track">
           <div id="upgradeTimerBar" class="h-full bg-gradient-to-r from-[#ef4444] via-[#f59e0b] to-[#fde047] transition-all duration-150" style="width: 100%;"></div>
         </div>
       </div>
     </div>
 
     <!-- ENEMY CASTLE HP & AI BUFFS (RIGHT) -->
-    <div class="pointer-events-auto flex flex-col items-end w-[32%] max-w-[360px]">
-      <div class="relative w-full h-9 sm:h-10 rounded-xl bg-[#111c2d] border-[3px] border-[#0b1320] shadow-lg overflow-hidden flex items-center">
-        <div id="enemyHpBar" class="h-full bg-gradient-to-b from-[#3b82f6] via-[#2563eb] to-[#1d4ed8] transition-all duration-200 ml-auto" style="width: 100%;"></div>
-        <div class="absolute inset-0 flex items-center justify-center px-2">
-          <span id="enemyHpText" class="text-white font-extrabold text-xs sm:text-sm md:text-base tracking-wide text-outline truncate">
+    <div class="pointer-events-auto flex flex-col items-end w-[48%] sm:w-[32%] max-w-[360px]">
+      <div class="hp-bar hp-blue w-full">
+        <div id="enemyHpBar" class="hp-fill" style="width: 100%;"></div>
+        <div class="hp-text">
+          <span id="enemyHpText" class="text-white font-extrabold text-[9px] min-[460px]:text-xs sm:text-sm md:text-base tracking-wide text-outline truncate">
             ЗАМОК ВРАГА • 1000 / 1000 HP
           </span>
         </div>
       </div>
-      <!-- Enemy AI Chosen Cards Row -->
-      <div id="enemyBuffsRow" class="flex flex-wrap justify-end gap-1 mt-1 min-h-[20px]"></div>
+      <div id="enemyBuffsRow" class="flex flex-wrap justify-end gap-1 mt-1.5 min-h-[20px]"></div>
       <!-- Hidden spans kept for DOM compatibility -->
       <span id="aiWaveStatus" class="hidden"></span>
       <span id="battleCountStatus" class="hidden"></span>
@@ -163,7 +151,7 @@
           </div>
         </div>
 
-        <button id="btnPlayAgain" class="w-full py-3 rounded-xl price-btn-affordable text-white font-black text-base sm:text-lg text-outline tracking-wide hover:brightness-110 transition shadow-lg">
+        <button id="btnPlayAgain" class="big-btn w-full py-3 price-btn-affordable text-white font-black text-base sm:text-lg text-outline tracking-wide">
           ⚔️ СЫГРАТЬ ЕЩЁ РАЗ
         </button>
       </div>
@@ -197,7 +185,7 @@
         Горячие клавиши: <kbd class="kbd">1</kbd>–<kbd class="kbd">6</kbd> войска, <kbd class="kbd">7</kbd> купить карты, <kbd class="kbd">Пробел</kbd> пауза
       </div>
 
-      <button id="btnStartGame" class="w-full py-3 rounded-xl price-btn-affordable text-white font-black text-lg sm:text-xl text-outline tracking-wide hover:brightness-110 transition shadow-lg">
+      <button id="btnStartGame" class="big-btn w-full py-3 price-btn-affordable text-white font-black text-lg sm:text-xl text-outline tracking-wide">
         ⚔️ В БОЙ!
       </button>
     </div>
@@ -211,6 +199,14 @@
   <script src="js/ai.js"></script>
   <script src="js/battle.js"></script>
   <script src="js/gameover.js"></script>
+  <script src="js/art/util.js"></script>
+  <script src="js/art/units-infantry.js"></script>
+  <script src="js/art/units-heavy.js"></script>
+  <script src="js/art/units.js"></script>
+  <script src="js/art/castle.js"></script>
+  <script src="js/art/scene.js"></script>
+  <script src="js/art/fx.js"></script>
+  <script src="js/art/icons.js"></script>
   <script src="js/render.js"></script>
   <script src="js/main.js"></script>
 </body>

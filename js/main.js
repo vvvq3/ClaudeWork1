@@ -9,8 +9,10 @@ function resizeCanvas() {
   if (!container) return;
   canvasWidth = container.clientWidth || window.innerWidth;
   canvasHeight = container.clientHeight || (window.innerHeight - 110);
-  canvas.width = canvasWidth;
-  canvas.height = canvasHeight;
+  // render at device resolution so the artwork stays crisp on high-DPI screens
+  dpr = Math.min(2, window.devicePixelRatio || 1);
+  canvas.width = Math.round(canvasWidth * dpr);
+  canvas.height = Math.round(canvasHeight * dpr);
 }
 
 function gameLoop(now) {
