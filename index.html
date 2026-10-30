@@ -1,0 +1,357 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<!-- GAME:START -->
+<title>Крестики-нолики</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;700&family=Golos+Text:wght@400;500;600&display=swap">
+<style>
+  /* Layout: a sheet of squared school-notebook paper with a red margin; the board is drawn in ink on the grid. */
+  :root {
+    --paper: #f7f9fc;
+    --grid: #cfdcef;
+    --margin: #e07a7a;
+    --ink: #1f3a8a;
+    --ink-o: #b4232f;
+    --text: #1c2433;
+    --muted: #5b6678;
+    --chip: #e6edf8;
+    --win: #f4d35e;
+    --font-hand: "Caveat", "Segoe Print", "Comic Sans MS", cursive;
+    --font-body: "Golos Text", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --cell: 22px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper: #161c27; --grid: #26324a; --margin: #8a3b44;
+      --ink: #8fb4ff; --ink-o: #ff8a8f; --text: #e4e9f2; --muted: #98a3b8;
+      --chip: #222c3f; --win: #6b5a1c; color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #161c27; --grid: #26324a; --margin: #8a3b44;
+    --ink: #8fb4ff; --ink-o: #ff8a8f; --text: #e4e9f2; --muted: #98a3b8;
+    --chip: #222c3f; --win: #6b5a1c; color-scheme: dark;
+  }
+
+  html, body { min-height: 100%; }
+  body {
+    margin: 0;
+    background-color: var(--paper);
+    background-image:
+      linear-gradient(to right, transparent 0 calc(max(16px, env(safe-area-inset-left, 0px)) + 28px), var(--margin) 0 calc(max(16px, env(safe-area-inset-left, 0px)) + 30px), transparent 0),
+      linear-gradient(var(--grid) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+    background-size: 100% 100%, var(--cell) var(--cell), var(--cell) var(--cell);
+    color: var(--text);
+    font: 16px/1.5 var(--font-body);
+  }
+  .sheet {
+    max-width: 520px;
+    margin: 0 auto;
+    padding-block: 28px 40px;
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+    display: grid;
+    gap: 20px;
+  }
+  header { display: grid; gap: 2px; padding-left: 28px; }
+  h1 {
+    margin: 0;
+    font: 700 clamp(44px, 11vw, 64px)/1 var(--font-hand);
+    color: var(--ink);
+    text-wrap: balance;
+  }
+  h1 .o { color: var(--ink-o); }
+  .sub { margin: 0; color: var(--muted); font-size: 15px; }
+
+  .controls { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+  .seg {
+    display: inline-flex; background: var(--chip); border-radius: 999px; padding: 3px;
+  }
+  .seg button {
+    font: 500 14px var(--font-body); color: var(--muted);
+    background: transparent; border: 0; border-radius: 999px; padding: 6px 14px; cursor: pointer;
+  }
+  .seg button[aria-pressed="true"] { background: var(--paper); color: var(--text); box-shadow: 0 1px 3px rgb(0 0 0 / .15); }
+  button:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+
+  .score {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;
+    font-variant-numeric: tabular-nums;
+  }
+  .score div {
+    display: grid; justify-items: center; padding: 6px 4px;
+    border-radius: 10px; border: 2px solid transparent;
+  }
+  .score div.turn { border-color: var(--grid); background: var(--chip); }
+  .score .label { font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+  .score .num { font: 700 34px/1 var(--font-hand); }
+  .score .x .num { color: var(--ink); }
+  .score .o .num { color: var(--ink-o); }
+
+  .board-wrap { display: grid; justify-items: center; }
+  .board {
+    position: relative;
+    width: min(100%, 360px);
+    aspect-ratio: 1;
+    max-width: 100%;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    grid-template-rows: repeat(3, 1fr);
+  }
+  .board svg.lines { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+  .lines path { stroke: var(--text); stroke-width: 2.6; fill: none; stroke-linecap: round; opacity: .8; }
+  .cell {
+    position: relative; border: 0; padding: 0; background: transparent; cursor: pointer;
+    border-radius: 8px; transition: background-color .15s;
+  }
+  .cell:hover:not(:disabled) { background: color-mix(in srgb, var(--chip) 70%, transparent); }
+  .cell:disabled { cursor: default; }
+  .cell.win { background: color-mix(in srgb, var(--win) 55%, transparent); }
+  .cell svg { width: 70%; height: 70%; position: absolute; inset: 15%; }
+  .mark { fill: none; stroke-width: 9; stroke-linecap: round; stroke-linejoin: round; }
+  .mark.x { stroke: var(--ink); }
+  .mark.o { stroke: var(--ink-o); }
+  .draw { stroke-dasharray: 1; stroke-dashoffset: 1; animation: ink .28s ease-out forwards; }
+  .draw.second { animation-delay: .14s; }
+  @keyframes ink { to { stroke-dashoffset: 0; } }
+
+  .status {
+    margin: 0; text-align: center; min-height: 1.4em;
+    font: 700 30px/1.2 var(--font-hand); color: var(--text);
+  }
+  .actions { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; }
+  .btn {
+    font: 600 15px var(--font-body); padding: 10px 18px; border-radius: 10px; cursor: pointer;
+    border: 2px solid var(--ink); background: var(--ink); color: var(--paper);
+  }
+  .btn.ghost { background: transparent; color: var(--ink); }
+  .hint { margin: 0; text-align: center; color: var(--muted); font-size: 13px; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .draw { animation: none; stroke-dashoffset: 0; }
+  }
+</style>
+<!-- GAME:HEAD-END -->
+</head>
+<body>
+<!-- GAME:BODY -->
+<main class="sheet">
+  <header>
+    <h1>Крестики-<span class="o">нолики</span></h1>
+    <p class="sub">Три в ряд по горизонтали, вертикали или диагонали.</p>
+  </header>
+
+  <div class="controls">
+    <div class="seg" role="group" aria-label="Режим">
+      <button id="mode-ai" type="button" aria-pressed="true">С компьютером</button>
+      <button id="mode-pvp" type="button" aria-pressed="false">Вдвоём</button>
+    </div>
+    <div class="seg" id="level" role="group" aria-label="Сложность">
+      <button id="lvl-easy" type="button" data-level="easy" aria-pressed="false">Легко</button>
+      <button id="lvl-hard" type="button" data-level="hard" aria-pressed="true">Непобедимый</button>
+    </div>
+  </div>
+
+  <div class="score" aria-live="polite">
+    <div class="x" id="score-x"><span class="label" id="name-x">Вы (X)</span><span class="num" id="num-x">0</span></div>
+    <div class="d"><span class="label">Ничьи</span><span class="num" id="num-d">0</span></div>
+    <div class="o" id="score-o"><span class="label" id="name-o">Компьютер (O)</span><span class="num" id="num-o">0</span></div>
+  </div>
+
+  <div class="board-wrap">
+    <div class="board" id="board" role="grid" aria-label="Игровое поле">
+      <svg class="lines" viewBox="0 0 300 300" aria-hidden="true">
+        <path d="M101 8 C 99 110, 103 200, 100 292"/>
+        <path d="M201 10 C 203 100, 198 210, 200 290"/>
+        <path d="M8 100 C 110 102, 200 98, 292 101"/>
+        <path d="M10 200 C 100 198, 210 203, 290 199"/>
+      </svg>
+    </div>
+  </div>
+
+  <p class="status" id="status" aria-live="polite">Ваш ход</p>
+
+  <div class="actions">
+    <button class="btn" id="restart" type="button">Новая партия</button>
+    <button class="btn ghost" id="reset" type="button">Сбросить счёт</button>
+  </div>
+  <p class="hint">Крестики и нолики ходят первыми по очереди: в следующей партии начнёт другой.</p>
+</main>
+
+<script>
+(() => {
+  const LINES = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
+  const $ = id => document.getElementById(id);
+  const boardEl = $('board');
+  const cells = [];
+
+  const saved = (window.claude && window.claude.hot && window.claude.hot.data) || {};
+  const state = Object.assign({
+    board: Array(9).fill(null),
+    mode: 'ai',          // 'ai' | 'pvp'
+    level: 'hard',       // 'easy' | 'hard'
+    starter: 'X',
+    turn: 'X',
+    over: false,
+    score: { X: 0, O: 0, D: 0 },
+  }, saved.state || {});
+
+  window.claude?.hot?.snapshot?.(() => ({ state }));
+
+  for (let i = 0; i < 9; i++) {
+    const b = document.createElement('button');
+    b.className = 'cell';
+    b.type = 'button';
+    b.id = 'cell-' + i;
+    b.setAttribute('aria-label', 'Клетка ' + (Math.floor(i / 3) + 1) + '-' + (i % 3 + 1));
+    b.addEventListener('click', () => humanMove(i));
+    boardEl.appendChild(b);
+    cells.push(b);
+  }
+
+  function winner(bd) {
+    for (const l of LINES) {
+      const [a, b, c] = l;
+      if (bd[a] && bd[a] === bd[b] && bd[a] === bd[c]) return { who: bd[a], line: l };
+    }
+    return bd.every(Boolean) ? { who: 'D', line: [] } : null;
+  }
+
+  function markSVG(p, animate) {
+    const cls = animate ? ' draw' : '';
+    if (p === 'X') {
+      return '<svg viewBox="0 0 100 100" aria-hidden="true">' +
+        '<path pathLength="1" class="mark x' + cls + '" d="M18 20 C 40 42, 60 60, 82 82"/>' +
+        '<path pathLength="1" class="mark x' + cls + ' second" d="M80 18 C 58 40, 42 60, 20 80"/></svg>';
+    }
+    return '<svg viewBox="0 0 100 100" aria-hidden="true">' +
+      '<path pathLength="1" class="mark o' + cls + '" d="M52 14 C 26 12, 12 34, 15 54 C 18 76, 38 88, 58 85 C 80 81, 89 60, 86 42 C 83 24, 66 13, 48 16"/></svg>';
+  }
+
+  function render(lastMove) {
+    const res = winner(state.board);
+    cells.forEach((c, i) => {
+      const p = state.board[i];
+      if (p && !c.dataset.p) c.innerHTML = markSVG(p, i === lastMove);
+      if (!p) c.innerHTML = '';
+      c.dataset.p = p || '';
+      c.disabled = !!p || state.over || (state.mode === 'ai' && state.turn === 'O');
+      c.classList.toggle('win', !!(res && res.line.includes(i)));
+    });
+
+    $('mode-ai').setAttribute('aria-pressed', state.mode === 'ai');
+    $('mode-pvp').setAttribute('aria-pressed', state.mode === 'pvp');
+    $('level').hidden = state.mode !== 'ai';
+    $('lvl-easy').setAttribute('aria-pressed', state.level === 'easy');
+    $('lvl-hard').setAttribute('aria-pressed', state.level === 'hard');
+
+    $('name-x').textContent = state.mode === 'ai' ? 'Вы (X)' : 'Игрок X';
+    $('name-o').textContent = state.mode === 'ai' ? 'Компьютер (O)' : 'Игрок O';
+    $('num-x').textContent = state.score.X;
+    $('num-o').textContent = state.score.O;
+    $('num-d').textContent = state.score.D;
+    $('score-x').classList.toggle('turn', !state.over && state.turn === 'X');
+    $('score-o').classList.toggle('turn', !state.over && state.turn === 'O');
+
+    let msg;
+    if (res) {
+      if (res.who === 'D') msg = 'Ничья!';
+      else if (state.mode === 'ai') msg = res.who === 'X' ? 'Вы победили!' : 'Компьютер победил';
+      else msg = 'Победили ' + (res.who === 'X' ? 'крестики' : 'нолики') + '!';
+    } else if (state.mode === 'ai') {
+      msg = state.turn === 'X' ? 'Ваш ход' : 'Компьютер думает…';
+    } else {
+      msg = 'Ходят ' + (state.turn === 'X' ? 'крестики' : 'нолики');
+    }
+    $('status').textContent = msg;
+  }
+
+  function place(i) {
+    if (state.over || state.board[i]) return;
+    state.board[i] = state.turn;
+    const res = winner(state.board);
+    if (res) {
+      state.over = true;
+      state.score[res.who]++;
+    } else {
+      state.turn = state.turn === 'X' ? 'O' : 'X';
+    }
+    render(i);
+    maybeAI();
+  }
+
+  function humanMove(i) {
+    if (state.mode === 'ai' && state.turn === 'O') return;
+    place(i);
+  }
+
+  // Minimax with depth so the computer wins fast and loses slow.
+  function minimax(bd, player, depth) {
+    const res = winner(bd);
+    if (res) return { score: res.who === 'O' ? 10 - depth : res.who === 'X' ? depth - 10 : 0 };
+    let best = { score: player === 'O' ? -Infinity : Infinity, move: -1 };
+    for (let i = 0; i < 9; i++) {
+      if (bd[i]) continue;
+      bd[i] = player;
+      const s = minimax(bd, player === 'O' ? 'X' : 'O', depth + 1).score;
+      bd[i] = null;
+      if (player === 'O' ? s > best.score : s < best.score) best = { score: s, move: i };
+    }
+    return best;
+  }
+
+  function aiChoice() {
+    const free = state.board.map((v, i) => v ? -1 : i).filter(i => i >= 0);
+    if (state.level === 'easy' && Math.random() < 0.6) {
+      return free[Math.floor(Math.random() * free.length)];
+    }
+    if (free.length === 9) return [0, 2, 4, 6, 8][Math.floor(Math.random() * 5)];
+    return minimax(state.board.slice(), 'O', 0).move;
+  }
+
+  let aiTimer = null;
+  function maybeAI() {
+    clearTimeout(aiTimer);
+    if (state.mode !== 'ai' || state.over || state.turn !== 'O') return;
+    aiTimer = setTimeout(() => place(aiChoice()), 450);
+  }
+
+  function newGame() {
+    clearTimeout(aiTimer);
+    state.starter = state.starter === 'X' ? 'O' : 'X';
+    state.board = Array(9).fill(null);
+    state.turn = state.starter;
+    state.over = false;
+    cells.forEach(c => { c.innerHTML = ''; c.dataset.p = ''; });
+    render();
+    maybeAI();
+  }
+
+  function setMode(mode) {
+    if (state.mode === mode) return;
+    state.mode = mode;
+    state.score = { X: 0, O: 0, D: 0 };
+    state.starter = 'O';
+    newGame();
+  }
+
+  $('mode-ai').addEventListener('click', () => setMode('ai'));
+  $('mode-pvp').addEventListener('click', () => setMode('pvp'));
+  $('lvl-easy').addEventListener('click', () => { state.level = 'easy'; render(); });
+  $('lvl-hard').addEventListener('click', () => { state.level = 'hard'; render(); });
+  $('restart').addEventListener('click', newGame);
+  $('reset').addEventListener('click', () => { state.score = { X: 0, O: 0, D: 0 }; render(); });
+
+  render();
+  maybeAI();
+})();
+</script>
+<!-- GAME:BODY-END -->
+</body>
+</html>
