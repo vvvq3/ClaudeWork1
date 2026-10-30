@@ -35,6 +35,7 @@ const CASTLE_UPGRADES = [
   { cost: 400, kind: 'catapult',    slot: 6, name: 'Катапульта' },
   { cost: 500, kind: 'commander',   slot: 7, name: 'Командир' }
 ];
+const CASTLE_BASE_HP = 3000;      // starting health of both castles (sized with the balance simulator)
 const CASTLE_UPGRADE_HP = 400;   // every castle upgrade also adds this much max HP (and heals it)
 
 // Commander aura numbers live with the unit definition.
@@ -97,8 +98,8 @@ function createInitialState() {
     paidUpgradePurchases: 0,
 
     // Player castle & its garrison (3 wall archers + castle upgrades)
-    playerCastleHp: 1000,
-    playerCastleMaxHp: 1000,
+    playerCastleHp: CASTLE_BASE_HP,
+    playerCastleMaxHp: CASTLE_BASE_HP,
     playerCastleLevel: 0,
     playerCastleDefenders: createCastleDefenders(0),
     unitMods: createUnitModsMap(),
@@ -107,8 +108,8 @@ function createInitialState() {
     // Enemy AI stats & garrison
     enemyGold: 100,
     enemyGoldPerTick: 1.0,
-    enemyCastleHp: 1000,
-    enemyCastleMaxHp: 1000,
+    enemyCastleHp: CASTLE_BASE_HP,
+    enemyCastleMaxHp: CASTLE_BASE_HP,
     enemyCastleLevel: 0,
     enemyCastleDefenders: createCastleDefenders(0.1),
     enemyUnitMods: createUnitModsMap(),
@@ -132,7 +133,7 @@ function createInitialState() {
     floatingTexts: [],
     bolts: [],   // lightning flashes (visual only)
     flash: 0,    // full-screen flash strength (visual only)
-    auraActive: { player: false, enemy: false },   // commander aura switched on
+    auraActive: { player: 0, enemy: 0 },   // commander aura switched on
 
     // Detailed per-unit statistics for Player
     unitBattleStats: createUnitBattleStatsMap(),
@@ -146,6 +147,15 @@ function createInitialState() {
     }
   };
 }
+
+// ---- per-team accessors (the AI and the balance simulator can control either side) ----
+function teamGold(team) { return team === 'player' ? gameState.gold : gameState.enemyGold; }
+function setTeamGold(team, v) { if (team === 'player') gameState.gold = v; else gameState.enemyGold = v; }
+function teamMods(team) { return team === 'player' ? gameState.unitMods : gameState.enemyUnitMods; }
+function teamCastleLevel(team) { return team === 'player' ? gameState.playerCastleLevel : gameState.enemyCastleLevel; }
+function teamCastleHp(team) { return team === 'player' ? gameState.playerCastleHp : gameState.enemyCastleHp; }
+function teamCastleMaxHp(team) { return team === 'player' ? gameState.playerCastleMaxHp : gameState.enemyCastleMaxHp; }
+function otherTeam(team) { return team === 'player' ? 'enemy' : 'player'; }
 
 // Effective stats for Player or Enemy team
 function getTeamUnitStats(team, unitType) {

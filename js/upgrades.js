@@ -55,6 +55,7 @@ function createUpgradeCardObject(type, randInt, pickUnit) {
     return {
       type,
       theme: 'green',
+      amount: bonusPerSec,
       subject: 'ДОБЫЧА ЗОЛОТА',
       bigValue: `+${bonusPerSec}/сек`,
       subtitle: 'Скорость монет',
@@ -79,6 +80,7 @@ function createUpgradeCardObject(type, randInt, pickUnit) {
     return {
       type,
       theme: 'gold',
+      amount: coins,
       subject: 'КАЗНА СРАЗУ',
       bigValue: `+${coins} 🪙`,
       subtitle: 'Монет мгновенно',
@@ -143,6 +145,8 @@ function createUpgradeCardObject(type, randInt, pickUnit) {
     return {
       type,
       theme: 'green',
+      unitId: unit.id,
+      pct,
       subject: `ЦЕНА: ${shortName.toUpperCase()}`,
       bigValue: `-${pct}%`,
       subtitle: 'Дешевле найм',
@@ -168,6 +172,8 @@ function createUpgradeCardObject(type, randInt, pickUnit) {
     return {
       type,
       theme: 'red',
+      unitId: unit.id,
+      pct,
       subject: `УРОН: ${shortName.toUpperCase()}`,
       bigValue: `+${pct}%`,
       subtitle: 'Сила удара',
@@ -199,6 +205,8 @@ function createUpgradeCardObject(type, randInt, pickUnit) {
     return {
       type,
       theme: 'blue',
+      unitId: unit.id,
+      pct,
       subject: `ЗАЩИТА: ${shortName.toUpperCase()}`,
       bigValue: `+${pct}%`,
       subtitle: 'Здоровье бойца',
@@ -230,6 +238,7 @@ function createUpgradeCardObject(type, randInt, pickUnit) {
     return {
       type,
       theme: 'blue',
+      pct,
       subject: 'БРОНЯ ЗАМКА',
       bigValue: `+${pct}%`,
       subtitle: 'Макс. HP замка',
@@ -258,6 +267,7 @@ function createUpgradeCardObject(type, randInt, pickUnit) {
   return {
     type: 'castle_heal',
     theme: 'blue',
+    pct: healPct,
     subject: 'РЕМОНТ ЗАМКА',
     bigValue: `+${healPct}%`,
     subtitle: 'Лечение HP замка',
@@ -281,12 +291,9 @@ function createUpgradeCardObject(type, randInt, pickUnit) {
 }
 
 function applyRandomUpgradeForEnemy() {
+  // the enemy AI chooses from its own three cards (smart picks on the hard level)
   const aiCards = generateThreeUpgradeCards('enemy');
-  const playerUnitCount = gameState.units.filter(u => u.team === 'player' && u.hp > 0).length;
-  let candidates = aiCards.filter(c => !(c.type === 'wipe_enemies' && playerUnitCount < 3));
-  if (candidates.length === 0) candidates = aiCards;
-
-  const chosen = candidates[Math.floor(Math.random() * candidates.length)];
+  const chosen = gameState.enemyAI.pickCard(aiCards) || aiCards[0];
   chosen.applyToTeam('enemy');
   gameState.aiUpgradesCount++;
   gameState.lastEnemyUpgradeText = chosen.aiSummary;

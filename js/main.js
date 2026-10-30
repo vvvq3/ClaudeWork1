@@ -42,7 +42,7 @@ function gameLoop(now) {
     }
 
     if (!gameState.modalOpen) {
-      updateEnemyAI(dt);
+      gameState.enemyAI.update(dt);
       updateBattlefield(dt);
     }
 
@@ -60,6 +60,25 @@ function gameLoop(now) {
   requestAnimationFrame(gameLoop);
 }
 
+// ---- enemy difficulty ----------------------------------------------------------------------
+let aiDifficulty = 'normal';
+try {
+  const saved = localStorage.getItem('castleBattleLevel');
+  if (saved && AI_LEVELS[saved]) aiDifficulty = saved;
+} catch (e) { /* storage may be blocked: the default is fine */ }
+
+function setDifficulty(level, restart) {
+  if (!AI_LEVELS[level]) return;
+  aiDifficulty = level;
+  try { localStorage.setItem('castleBattleLevel', level); } catch (e) { /* ignore */ }
+  document.querySelectorAll('.level-btn').forEach(b => b.classList.toggle('active', b.dataset.level === level));
+  if (restart) {
+    restartGame();
+  } else if (gameState && !gameState.gameOver && gameState.elapsedTime === 0) {
+    gameState.enemyAI = createAI('enemy', level);   // the match has not started yet: switch the opponent now
+  }
+}
+
 function restartGame() {
   document.getElementById('gameOverModal').classList.add('hidden');
   upgradeModal.classList.add('hidden');
@@ -68,7 +87,7 @@ function restartGame() {
   const enemyBuffsRow = document.getElementById('enemyBuffsRow');
   if (enemyBuffsRow) enemyBuffsRow.innerHTML = '';
   gameState = createInitialState();
-  gameState.aiPlannedUnitId = pickNextAiPlannedUnit();
+  gameState.enemyAI = createAI('enemy', aiDifficulty);
   buildBottomUnitCards();
   updateHUD();
 }
@@ -123,6 +142,10 @@ document.getElementById('btnReadyUpgrade').addEventListener('click', () => openU
 // (a user gesture is also required before the browser allows audio).
 const startScreen = document.getElementById('startScreen');
 
+document.querySelectorAll('.level-btn').forEach(b => {
+  b.addEventListener('click', () => setDifficulty(b.dataset.level, b.dataset.restart === '1'));
+});
+
 document.getElementById('btnStartGame').addEventListener('click', () => {
   SoundFX.init();
   startScreen.classList.add('hidden');
@@ -133,6 +156,7 @@ document.getElementById('btnStartGame').addEventListener('click', () => {
 window.onload = () => {
   resizeCanvas();
   restartGame();
+  setDifficulty(aiDifficulty, false);
   gameState.paused = true;
   lastFrameTime = performance.now();
   requestAnimationFrame(gameLoop);

@@ -151,6 +151,13 @@
           </div>
         </div>
 
+        <div class="text-amber-200/90 text-[11px] sm:text-xs font-bold mb-1.5">Сложность следующей партии</div>
+        <div class="level-picker mb-3" role="group" aria-label="Сложность противника">
+          <button type="button" class="level-btn" data-level="easy" data-restart="0">Лёгкий</button>
+          <button type="button" class="level-btn" data-level="normal" data-restart="0">Обычный</button>
+          <button type="button" class="level-btn" data-level="hard" data-restart="0">Сложный</button>
+        </div>
+
         <button id="btnPlayAgain" class="big-btn w-full py-3 price-btn-affordable text-white font-black text-base sm:text-lg text-outline tracking-wide">
           ⚔️ СЫГРАТЬ ЕЩЁ РАЗ
         </button>
@@ -188,6 +195,14 @@
         Горячие клавиши: <kbd class="kbd">1</kbd>–<kbd class="kbd">9</kbd> войска, <kbd class="kbd">0</kbd> купить карты, <kbd class="kbd">-</kbd> улучшить замок, <kbd class="kbd">Пробел</kbd> пауза
       </div>
 
+      <div class="text-amber-200/90 text-[11px] sm:text-xs font-bold mb-1.5">Сложность противника</div>
+      <div class="level-picker" role="group" aria-label="Сложность противника">
+        <button type="button" class="level-btn" data-level="easy" data-restart="0">Лёгкий</button>
+        <button type="button" class="level-btn" data-level="normal" data-restart="0">Обычный</button>
+        <button type="button" class="level-btn" data-level="hard" data-restart="0">Сложный</button>
+      </div>
+      <p class="level-hint">Лёгкий покупает почти наугад. Обычный подбирает контры к вашей армии. Сложный меняет тактику, копит резерв, бьёт волнами и использует усиления своих карт.</p>
+
       <button id="btnStartGame" class="big-btn w-full py-3 price-btn-affordable text-white font-black text-lg sm:text-xl text-outline tracking-wide">
         ⚔️ В БОЙ!
       </button>
@@ -199,6 +214,7 @@
   <script src="js/state.js"></script>
   <script src="js/upgrades.js"></script>
   <script src="js/ui.js"></script>
+  <script src="js/ai-data.js"></script>
   <script src="js/ai.js"></script>
   <script src="js/battle.js"></script>
   <script src="js/gameover.js"></script>

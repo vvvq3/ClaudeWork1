@@ -6,7 +6,10 @@
   "scripts": {
     "build:css": "tailwindcss -c tailwind.config.js -i src/tailwind.input.css -o css/tailwind.css --minify",
     "watch:css": "tailwindcss -c tailwind.config.js -i src/tailwind.input.css -o css/tailwind.css --watch",
-    "start": "python3 -m http.server 8000"
+    "start": "python3 -m http.server 8000",
+    "sim:matrix": "node tools/sim/matrix.js",
+    "sim:spam": "node tools/sim/spam.js hard 8",
+    "sim:counters": "node tools/sim/gen-counters.js"
   },
   "devDependencies": {
     "tailwindcss": "3.4.17"

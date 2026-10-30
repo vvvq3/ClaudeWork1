@@ -40,28 +40,30 @@ function createUnitEntity(team, unitType) {
     seed: Math.random() * 6.28,
     attackAnim: 0,
     inspired: false,   // commander aura active on this unit
+    auraFactor: 0,     // 1 = commander with the army, 0.5 = castle commander
     auraHpBonus: 0
   };
 }
 
+// Pays for a unit and puts it on the field. Works for either team (the AI and the simulator use it too).
+function buyUnit(team, unitId) {
+  const unitType = UNIT_TYPES.find(u => u.id === unitId);
+  if (!unitType) return false;
+  const stats = getTeamUnitStats(team, unitType);
+  if (teamGold(team) < stats.cost) return false;
+  setTeamGold(team, teamGold(team) - stats.cost);
+  if (team === 'player') {
+    gameState.stats.unitsSpawned++;
+    if (gameState.unitBattleStats[unitType.id]) gameState.unitBattleStats[unitType.id].spawned++;
+    SoundFX.play('spawn');
+  }
+  gameState.units.push(createUnitEntity(team, unitType));
+  return true;
+}
+
 function spawnPlayerUnit(unitId) {
   if (!gameState || gameState.gameOver || gameState.paused || gameState.modalOpen) return;
-  const unitType = UNIT_TYPES.find(u => u.id === unitId);
-  if (!unitType) return;
-
-  const stats = getTeamUnitStats('player', unitType);
-  if (gameState.gold < stats.cost) return;
-
-  gameState.gold -= stats.cost;
-  gameState.stats.unitsSpawned++;
-  if (gameState.unitBattleStats[unitType.id]) {
-    gameState.unitBattleStats[unitType.id].spawned++;
-  }
-  SoundFX.play('spawn');
-
-  const spawned = createUnitEntity('player', unitType);
-  gameState.units.push(spawned);
-  updateHUD();
+  if (buyUnit('player', unitId)) updateHUD();
 }
 
 function spawnEnemyUnit(unitId) {
@@ -186,46 +188,68 @@ function applyCastleUpgrade(team) {
   return true;
 }
 
-// ---- commander aura -----------------------------------------------------------------------
-// While a team has a commander (on the field or in its castle), every fighter of that team is
-// inspired: +30% health and damage, and slow healing. The bonus disappears with the commander.
-function teamHasCommander(team) {
-  if (gameState.units.some(u => u.team === team && u.hp > 0 && u.type.isSupport)) return true;
+// ---- commander aura ----------------------------------------------------------------------
+// While a team has a commander, every fighter of that team is inspired: +30% health and damage and
+// slow healing. A commander walking with the army gives the full aura (and dies like anyone);
+// the one living in the castle never dies but only gives half of it.
+const CASTLE_COMMANDER_AURA = 0.5;
+
+function auraFactor(team) {
+  if (gameState.units.some(u => u.team === team && u.hp > 0 && u.type.isSupport)) return 1;
   const defenders = team === 'player' ? gameState.playerCastleDefenders : gameState.enemyCastleDefenders;
-  return defenders.some(d => d.kind === 'commander');
+  return defenders.some(d => d.kind === 'commander') ? CASTLE_COMMANDER_AURA : 0;
+}
+
+function teamHasCommander(team) {
+  return auraFactor(team) > 0;
+}
+
+// Defender's advantage: fighters standing close to their own castle hit harder.
+var HOME_ATK_BONUS = 0.25;
+const HOME_RANGE = 280;
+
+function nearOwnGate(u) {
+  const { leftCastleX, rightCastleX } = getCastlePositions();
+  const gate = u.team === 'player' ? leftCastleX + 54 : rightCastleX - 54;
+  return Math.abs(u.x - gate) < HOME_RANGE;
 }
 
 function effectiveAtk(u) {
-  return u.inspired ? u.atk * COMMANDER_AURA.atkMult : u.atk;
+  let mult = 1;
+  if (u.auraFactor) mult += (COMMANDER_AURA.atkMult - 1) * u.auraFactor;
+  if (HOME_ATK_BONUS && nearOwnGate(u)) mult += HOME_ATK_BONUS;
+  return u.atk * mult;
 }
 
 function updateInspiration(dt) {
   for (const team of ['player', 'enemy']) {
-    const active = teamHasCommander(team);
-    if (active !== gameState.auraActive[team]) {
-      gameState.auraActive[team] = active;
-      const { leftCastleX, rightCastleX, roadCenterY } = getCastlePositions();
-      const fx = team === 'player' ? leftCastleX + 90 : rightCastleX - 90;
-      spawnFloatingText(fx, roadCenterY - 100,
-        active ? (team === 'player' ? 'ВДОХНОВЕНИЕ! +30%' : 'ВРАГ ВДОХНОВЛЁН! +30%') : 'Вдохновение угасло',
-        active ? '#ffe36b' : '#cbd5e1');
+    const factor = auraFactor(team);
+    if (factor !== gameState.auraActive[team]) {
+      const was = gameState.auraActive[team];
+      gameState.auraActive[team] = factor;
+      if (!was !== !factor) {   // switched on or off (not just full <-> half)
+        const { leftCastleX, rightCastleX, roadCenterY } = getCastlePositions();
+        const fx = team === 'player' ? leftCastleX + 90 : rightCastleX - 90;
+        spawnFloatingText(fx, roadCenterY - 100,
+          factor ? (team === 'player' ? 'ВДОХНОВЕНИЕ!' : 'ВРАГ ВДОХНОВЛЁН!') : 'Вдохновение угасло',
+          factor ? '#ffe36b' : '#cbd5e1');
+      }
     }
     for (const u of gameState.units) {
       if (u.team !== team || u.hp <= 0) continue;
-      if (active && !u.inspired) {
-        u.inspired = true;
-        u.auraHpBonus = Math.round(u.maxHp * (COMMANDER_AURA.hpMult - 1));
+      if ((u.auraFactor || 0) !== factor) {
+        // swap the old health bonus for the new one
+        u.maxHp -= u.auraHpBonus;
+        u.hp = Math.min(u.hp, u.maxHp);
+        u.auraFactor = factor;
+        u.auraHpBonus = Math.round(u.maxHp * (COMMANDER_AURA.hpMult - 1) * factor);
         u.maxHp += u.auraHpBonus;
         u.hp += u.auraHpBonus;
-        Art.fx.sparkle(u.x, u.y - 24, 2);
-      } else if (!active && u.inspired) {
-        u.inspired = false;
-        u.maxHp -= u.auraHpBonus;
-        u.auraHpBonus = 0;
-        u.hp = Math.min(u.hp, u.maxHp);
+        u.inspired = factor > 0;
+        if (factor > 0) Art.fx.sparkle(u.x, u.y - 24, 2);
       }
-      if (u.inspired && u.hp < u.maxHp) {
-        u.hp = Math.min(u.maxHp, u.hp + u.maxHp * COMMANDER_AURA.healPerSec * dt);
+      if (u.auraFactor && u.hp < u.maxHp) {
+        u.hp = Math.min(u.maxHp, u.hp + u.maxHp * COMMANDER_AURA.healPerSec * u.auraFactor * dt);
         if (Math.random() < dt * 1.4) Art.fx.plus(u.x, u.y - 22, 1);
       }
     }
@@ -257,6 +281,9 @@ function dealDamageToTarget(attackerTeam, sourceUnitTypeId, target, isCastle, ra
       !(srcDef && srcDef.ignoreArmor)) {
     modifiedDamage *= (1 - target.type.rangedDamageResistance);
   }
+
+  // walls: siege engines and magic are good against stone, cavalry and rabble are not
+  if (isCastle && srcDef && srcDef.castleMult) modifiedDamage *= srcDef.castleMult;
 
   const intDamage = Math.max(1, Math.round(modifiedDamage));
 
@@ -342,6 +369,27 @@ function updateBattlefield(dt) {
       }
     }
 
+    // Ranged units focus an enemy commander (support unit) whenever one is in reach: his aura is
+    // worth more than any single fighter, so he must be protected.
+    if (u.type.isRanged) {
+      let pick = null;
+      let pickDx = Infinity;
+      for (const foe of opposingList) {
+        if (!foe.type.isSupport || foe.hp <= 0) continue;
+        const fdx = (foe.x - u.x) * dir;
+        if (fdx < -18 || fdx >= pickDx) continue;
+        const reach = Math.max(0, fdx - (u.type.radius + foe.type.radius) * 0.7);
+        if (reach <= u.range && !(u.type.minRange && fdx < u.type.minRange)) {
+          pick = foe;
+          pickDx = fdx;
+        }
+      }
+      if (pick) {
+        closestEnemy = pick;
+        closestDx = pickDx;
+      }
+    }
+
     const distToCastle = u.team === 'player' ? (rightGateX - u.x) : (u.x - leftGateX);
     let inRangeOfUnit = false;
 
@@ -350,6 +398,8 @@ function updateBattlefield(dt) {
         const contactRadius = (u.type.radius + closestEnemy.type.radius) * 0.7;
         const effectiveEnemyDist = Math.max(0, closestDx - contactRadius);
         inRangeOfUnit = effectiveEnemyDist <= u.range;
+        // siege engines have a dead zone: they cannot hit enemies standing right next to them
+        if (u.type.minRange && closestDx < u.type.minRange) inRangeOfUnit = false;
       } else {
         // Melee units must walk right up to the enemy in BOTH X and Y before swinging!
         // They never swing from afar across the road or from a distance.
@@ -589,8 +639,9 @@ function updateBattlefield(dt) {
         // Catapult boulder AoE damage (50% reduced against Knights!)
         spawnHitParticles(p.targetX, p.targetY, '#f97316', 12);
         spawnClashStarburst(p.targetX, p.targetY, 'boulder');
+        // the blast is a circle around the landing point (not a strip across the whole road)
         foes.forEach(f => {
-          if (Math.abs(f.x - p.targetX) <= p.splash + f.type.radius) {
+          if (Math.hypot(f.x - p.targetX, getUnitModelCenterY(f) - p.targetY) <= p.splash + f.type.radius * 0.6) {
             dealDamageToTarget(p.team, p.sourceUnitTypeId, f, false, p.damage, null, true, p.srcType);
           }
         });

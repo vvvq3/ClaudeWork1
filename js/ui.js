@@ -95,6 +95,7 @@ function unitTooltipHTML(u) {
       <span>🎯 Дальность</span><b>${range}</b>
       <span>⏱️ Темп атаки</span><b>${u.atkCooldown.toFixed(2).replace(/0$/, '').replace('.', ',')} с</b>
       <span>👣 Скорость</span><b>${speedWord(u.speed)}</b>
+      <span>🏰 Урон по замку</span><b>×${String(u.castleMult || 1).replace('.', ',')}</b>
       <span>🪙 Цена</span><b>${st.cost}</b>
     </div>
     <ul class="tt-notes">${(u.notes || []).map(n => `<li>${n}</li>`).join('')}</ul>
