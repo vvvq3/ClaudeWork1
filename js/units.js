@@ -18,7 +18,9 @@ const UNIT_TYPES = [
     atkCooldown: 1.0,
     radius: 8.5, // 6.5 * 1.3
     isRanged: false,
-    splash: 0
+    splash: 0,
+    role: 'Дешёвый боец ближнего боя',
+    notes: ['Выручает, пока золота мало', 'Уязвим для стрел и огня']
   },
   {
     id: 'archer',
@@ -35,7 +37,9 @@ const UNIT_TYPES = [
     isRanged: true,
     projectileType: 'arrow',
     projectileSpeed: 360,
-    splash: 0
+    splash: 0,
+    role: 'Стрелок с луком',
+    notes: ['Стреляет издалека, пока свои держат строй', 'Слаб против конницы']
   },
   {
     id: 'knight',
@@ -51,7 +55,9 @@ const UNIT_TYPES = [
     radius: 10.4, // 8 * 1.3
     isRanged: false,
     rangedDamageResistance: 0.5, // Takes 50% less damage from all arrows/bolts & catapults!
-    splash: 0
+    splash: 0,
+    role: 'Тяжёлый пехотинец',
+    notes: ['−50% урона от стрел, болтов и камней', 'Магия бьёт его без скидки']
   },
   {
     id: 'crossbowman',
@@ -68,7 +74,9 @@ const UNIT_TYPES = [
     isRanged: true,
     projectileType: 'bolt',
     projectileSpeed: 460,
-    splash: 0
+    splash: 0,
+    role: 'Дальний стрелок',
+    notes: ['Самая большая дальность среди бойцов', 'Болты вдвое слабее по рыцарям и коннице']
   },
   {
     id: 'cavalry',
@@ -85,7 +93,9 @@ const UNIT_TYPES = [
     radius: 13.0, // 10 * 1.3
     isRanged: false,
     rangedDamageResistance: 0.5, // Mounted knight also armored against arrows/catapults
-    splash: 0
+    splash: 0,
+    role: 'Быстрая ударная конница',
+    notes: ['Скорость вдвое выше, чем у остальных', '−50% урона от стрел, болтов и камней', 'Копейщики наносят ей ×2,5 урона']
   },
   {
     id: 'catapult',
@@ -102,7 +112,68 @@ const UNIT_TYPES = [
     isRanged: true,
     projectileType: 'boulder',
     projectileSpeed: 260,
-    splash: 42
+    splash: 42,
+    role: 'Осадная машина',
+    notes: ['Камень бьёт по площади и по замку', 'Очень медленная', 'Огонь мага наносит ей ×1,5 урона']
+  },
+  {
+    id: 'spearman',
+    key: '7',
+    name: 'Копейщик',
+    genitivePlural: 'копейщиков',
+    baseCost: 15,
+    baseHp: 55,
+    baseAtk: 9,
+    range: 10, // long spear: reaches a little further than other melee units
+    speed: 52,
+    atkCooldown: 1.0,
+    radius: 9.2,
+    isRanged: false,
+    splash: 0,
+    bonusVs: { cavalry: 2.5 }, // anti-cavalry: x2.5 damage against mounted knights
+    role: 'Охотник на конницу',
+    notes: ['×2,5 урона по конным рыцарям', 'Длинное копьё бьёт чуть дальше других', 'Слабоват против пехоты']
+  },
+  {
+    id: 'mage',
+    key: '8',
+    name: 'Маг',
+    genitivePlural: 'магов',
+    baseCost: 50,
+    baseHp: 45,
+    baseAtk: 16,
+    range: 235,
+    speed: 44,
+    atkCooldown: 2.0,
+    radius: 8.8,
+    isRanged: true,
+    projectileType: 'fireball',
+    projectileSpeed: 330,
+    splash: 0,
+    multiTarget: 3,          // each fireball burns up to 3 enemies at once
+    ignoreArmor: true,       // fire ignores the knights' ranged-damage resistance
+    bonusVs: { catapult: 1.5 }, // wooden siege machines burn well
+    role: 'Огненные шары',
+    notes: ['Каждый шар бьёт сразу 3 цели', 'Игнорирует броню рыцарей и конницы', '×1,5 урона по катапультам', 'Очень хрупкий']
+  },
+  {
+    id: 'commander',
+    key: '9',
+    name: 'Командир',
+    genitivePlural: 'командиров',
+    baseCost: 90,
+    baseHp: 120,
+    baseAtk: 12,
+    range: 6,
+    speed: 40,
+    atkCooldown: 1.1,
+    radius: 10.5,
+    isRanged: false,
+    splash: 0,
+    isSupport: true,         // keeps behind the army instead of leading the charge
+    aura: { atkMult: 1.3, hpMult: 1.3, healPerSec: 0.03 },
+    role: 'Воодушевляет армию',
+    notes: ['Пока жив: все ваши бойцы на поле получают +30% здоровья и урона', 'И лечатся на 3% здоровья в секунду', 'Держится позади армии', 'Несколько командиров не складываются']
   }
 ];
 

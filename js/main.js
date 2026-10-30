@@ -87,15 +87,13 @@ window.addEventListener('keydown', (e) => {
     return;
   }
   const key = e.key;
-  if (key >= '1' && key <= '7') {
-    const idx = parseInt(key, 10) - 1;
-    if (idx === 6) {
-      buyExtraUpgradeCards();
-      return;
-    }
-    if (UNIT_TYPES[idx]) {
-      spawnPlayerUnit(UNIT_TYPES[idx].id);
-    }
+  if (key >= '1' && key <= '9') {
+    const unit = UNIT_TYPES[parseInt(key, 10) - 1];
+    if (unit) spawnPlayerUnit(unit.id);
+  } else if (key === BONUS_KEY) {
+    buyExtraUpgradeCards();
+  } else if (key === CASTLE_KEY || key === '=' || key === '+') {
+    buyCastleUpgrade();
   } else if (key === ' ') {
     e.preventDefault();
     togglePause();

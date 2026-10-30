@@ -1,7 +1,7 @@
 // ============================================================================
 // UNIT RENDERING ENTRY POINTS
-// Turns live game entities into animation poses, draws them with their shadow,
-// hit flash and health bar, handles falling corpses and card portraits.
+// Turns live game entities into animation poses, draws them with their shadow
+// and health bar, handles falling corpses and card portraits.
 // ============================================================================
 (function () {
   const A = Art;
@@ -15,7 +15,10 @@
     knight:      { h: 68, hp: 32, scale: 1.04, cx: 6, box: [-34, -79, 58, 6],    walk: 16, wind: 5,  sway: 3 },
     crossbowman: { h: 64, hp: 30, scale: 1.0,  cx: 6, box: [-26, -71, 46, 6],    walk: 16, wind: 8,  sway: 1 },
     cavalry:     { h: 96, hp: 38, scale: 1.0,  cx: 8, box: [-46, -124, 107, 6],  walk: 12, wind: 5,  sway: 3 },
-    catapult:    { h: 86, hp: 40, scale: 1.22, cx: 2, box: [-54, -94, 46, 6],    walk: 20, wind: 14, sway: 1 }
+    catapult:    { h: 86, hp: 40, scale: 1.22, cx: 2, box: [-54, -94, 46, 6],    walk: 20, wind: 14, sway: 1 },
+    spearman:    { h: 66, hp: 28, scale: 1.0,  cx: 8, box: [-30, -99, 106, 6],    walk: 14, wind: 5,  sway: 3 },
+    mage:        { h: 72, hp: 28, scale: 1.0,  cx: 6, box: [-23, -91, 82, 6],    walk: 14, wind: 8,  sway: 3 },
+    commander:   { h: 72, hp: 36, scale: 1.0,  cx: 2, box: [-33, -109, 57, 10],   walk: 14, wind: 5,  sway: 3 }
   };
   U.SPEC = SPEC;
 
@@ -45,28 +48,6 @@
     g.lineCap = 'round';
     fnFor(typeId)(g, pose, A.TEAM[teamKey]);
   };
-
-  // ---- hit flash via a shared scratch canvas (used for the falling-corpse flash) ----
-  let scratch = null;
-  function drawFlashed(g, paint) {
-    const d = A.dpr || 1;
-    const W = 260, H = 230, ox = 130, oy = 185;
-    if (!scratch || scratch.d !== d) {
-      const c = A.canvas(W * d, H * d);
-      scratch = { c, g: c.getContext('2d'), d };
-    }
-    const sg = scratch.g;
-    sg.setTransform(1, 0, 0, 1, 0, 0);
-    sg.clearRect(0, 0, W * d, H * d);
-    sg.setTransform(d, 0, 0, d, ox * d, oy * d);
-    paint(sg);
-    sg.setTransform(1, 0, 0, 1, 0, 0);
-    sg.globalCompositeOperation = 'source-atop';
-    sg.fillStyle = 'rgba(255,255,255,0.72)';
-    sg.fillRect(0, 0, W * d, H * d);
-    sg.globalCompositeOperation = 'source-over';
-    g.drawImage(scratch.c, -ox, -oy, W, H);
-  }
 
   // ---- sprite cache -------------------------------------------------------------------
   // Drawing a unit with dozens of inked paths every frame is expensive, so each animation
@@ -99,7 +80,7 @@
     const g = cv.getContext('2d');
     g.setTransform(d * sc, 0, 0, d * sc, -bx[0] * sc * d, -bx[1] * sc * d);
     U.drawBody(g, typeId, team, q);
-    return { cv, ox: bx[0] * sc, oy: bx[1] * sc, w, h, flash: null };
+    return { cv, ox: bx[0] * sc, oy: bx[1] * sc, w, h };
   }
 
   function getSprite(typeId, team, pose, time) {
@@ -112,25 +93,12 @@
     return sp;
   }
 
-  function flashOf(sp) {
-    if (!sp.flash) {
-      const f = A.canvas(sp.cv.width, sp.cv.height);
-      const g = f.getContext('2d');
-      g.drawImage(sp.cv, 0, 0);
-      g.globalCompositeOperation = 'source-atop';
-      g.fillStyle = 'rgba(255,255,255,0.72)';
-      g.fillRect(0, 0, f.width, f.height);
-      sp.flash = f;
-    }
-    return sp.flash;
-  }
-
   // Blit a cached frame at the current origin, facing `dir` (1 = right, -1 = left).
-  U.blit = function (g, typeId, team, pose, time, dir, flash, mul = 1) {
+  U.blit = function (g, typeId, team, pose, time, dir, mul = 1) {
     const sp = getSprite(typeId, team, pose, time);
     g.save();
     g.scale(dir * mul, mul);
-    g.drawImage(flash ? flashOf(sp) : sp.cv, sp.ox, sp.oy, sp.w, sp.h);
+    g.drawImage(sp.cv, sp.ox, sp.oy, sp.w, sp.h);
     g.restore();
   };
 
@@ -168,7 +136,16 @@
     g.beginPath();
     g.ellipse(0, 1, u.type.radius * 2.1 * spec.scale, 5.2 * spec.scale, 0, 0, Math.PI * 2);
     g.fill();
-    U.blit(g, u.type.id, u.team, pose, time, dir, u.hitFlash > 0);
+    if (u.inspired) {   // golden ring under units inspired by a commander
+      const pulse = 0.5 + 0.5 * Math.sin(time * 4 + (u.seed || 0));
+      const rx = u.type.radius * 2.5 * spec.scale;
+      g.fillStyle = `rgba(255, 215, 90, ${0.16 + 0.1 * pulse})`;
+      g.beginPath(); g.ellipse(0, 1, rx, rx * 0.34, 0, 0, Math.PI * 2); g.fill();
+      g.strokeStyle = `rgba(255, 224, 110, ${0.65 + 0.3 * pulse})`;
+      g.lineWidth = 2;
+      g.beginPath(); g.ellipse(0, 1, rx, rx * 0.34, 0, 0, Math.PI * 2); g.stroke();
+    }
+    U.blit(g, u.type.id, u.team, pose, time, dir);
     hpBar(g, u, spec);
     g.restore();
   };
@@ -224,12 +201,9 @@
       const dir = c.team === 'player' ? 1 : -1;
       const hop = Math.sin((age / FALL) * Math.PI) * 16;
       g.translate(0, -hop);
-      const paint = ctx => {
-        ctx.save();
-        paintLying(ctx, c, k);
-        ctx.restore();
-      };
-      if (age < 0.12) drawFlashed(g, paint); else paint(g);
+      g.save();
+      paintLying(g, c, k);
+      g.restore();
     } else {
       if (!c.bitmap) c.bitmap = lyingBitmap(c);
       const b = c.bitmap;

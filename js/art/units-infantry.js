@@ -589,5 +589,335 @@ Art.units = Art.units || {};
     g.restore();
   }
 
-  Art.units.infantry = { peasant, knight, archer, crossbowman, face, hairCap, torso, arm, legs, stance, kiteShield, sword, swoosh, eye };
+
+  // ===========================================================================
+  // SPEARMAN: conical helmet, mail coat, round shield on the back, long spear
+  // ===========================================================================
+  function spearHead(g, x, y, ang, T, p) {
+    g.save();
+    g.translate(x, y);
+    g.rotate(ang);
+    A.cap(g, -20, 0, 60, 0, 3.2, '#b88442', 1.9);
+    g.strokeStyle = 'rgba(255,230,170,0.6)';
+    g.lineWidth = 0.9;
+    g.beginPath(); g.moveTo(-16, -0.9); g.lineTo(55, -0.9); g.stroke();
+    // pennon in team colour just below the blade
+    const fl = Math.sin(p.t * 9 + p.seed) * 2 + (p.walk > 0.5 ? Math.sin(p.ph) * 2.4 : 0);
+    g.beginPath();
+    g.moveTo(52, -1.2);
+    g.quadraticCurveTo(44, -8 - fl * 0.5, 31 - fl, -5 + fl * 0.4);
+    g.lineTo(34 - fl, 2.2);
+    g.quadraticCurveTo(44, -1, 52, 1.2);
+    g.closePath();
+    A.fillStroke(g, T.base, 1.7);
+    // leaf-shaped blade
+    g.beginPath();
+    g.moveTo(58, -3.6);
+    g.quadraticCurveTo(67, -6.2, 80, 0);
+    g.quadraticCurveTo(67, 6.2, 58, 3.6);
+    g.closePath();
+    A.fillStroke(g, '#e4ecf5', 1.9);
+    g.fillStyle = '#9db0c6';
+    g.beginPath(); g.moveTo(58, 0.4); g.lineTo(78, 0.4); g.quadraticCurveTo(67, 5.8, 58, 3.4); g.closePath(); g.fill();
+    A.cap(g, 57, -4.2, 57, 4.2, 2.4, '#8793a5', 1.4);
+    g.restore();
+  }
+
+  function spearman(g, p, T) {
+    const st = stance(p, { leg: 14.5, stride: 5.6, lift: 3.6, bob: 2.1, stand: 5.5, lunge: 5 });
+    legs(g, st, { pants: '#6a5738', boot: '#3b281a', w: 6.2 });
+
+    g.save();
+    g.translate(st.lunge * 0.5, st.hipY);
+    g.rotate((st.walking ? 0.05 : 0.02) + st.sq * 0.18 - p.wind * 0.1);
+
+    const k = p.strike >= 0 ? 1 - ease(p.strike) : 0;
+    const w = p.strike >= 0 ? 0 : p.wind;
+    let bx = lerp(7, -3, w), by = lerp(-7, -9, w), ang = lerp(-1.12, -0.3, w);
+    if (p.strike >= 0) { bx = lerp(7, 17, k); by = lerp(-7, -9, k); ang = lerp(-1.12, -0.08, k); }
+    const dx = Math.cos(ang), dy = Math.sin(ang);
+
+    // round shield slung on the back
+    A.circ(g, -10.5, -12, 9.6, '#a06a38', 2.2);
+    A.circ(g, -10.5, -12, 6.4, T.base, 1.6);
+    A.circ(g, -10.5, -12, 2.3, '#cfd8e5', 1.4);
+    A.gloss(g, -13, -15.5, 2.6, 1.2, -0.6, 0.5);
+
+    torso(g, 8.8, 7.2, 18, '#8f9db2');
+    // team tabard
+    g.beginPath();
+    g.moveTo(-6, -17); g.lineTo(6, -17); g.lineTo(7.6, 5); g.lineTo(2.6, 3); g.lineTo(0, 5.4); g.lineTo(-2.6, 3); g.lineTo(-7.6, 5);
+    g.closePath();
+    A.fillStroke(g, T.base, 2);
+    g.fillStyle = T.hi; g.globalAlpha = 0.4;
+    g.beginPath(); g.moveTo(0.5, -17); g.lineTo(6, -17); g.lineTo(7.4, 4.6); g.lineTo(0.5, 3); g.closePath(); g.fill();
+    g.globalAlpha = 1;
+    A.rr(g, -8.6, -6.4, 17.2, 3.6, 1.4, '#5a3a22', 1.6);
+    A.rr(g, -2, -6.8, 4.2, 4.4, 1, '#ffd447', 1.2);
+    A.circ(g, -6.6, -16.6, 4.4, '#b6c2d3', 1.9);
+
+    // arms + spear
+    A.cap(g, 3, -16.5, bx + dx * 15, by + dy * 15, 5.2, A.shade('#8f9db2', 0.2), 2);
+    spearHead(g, bx, by, ang, T, p);
+    A.circ(g, bx + dx * 15, by + dy * 15, 3.5, A.shade(SKIN, 0.1), 1.8);
+    arm(g, -2.2, -16.4, bx, by, 5.4, '#8f9db2');
+
+    // head with a conical helmet and nasal
+    const hx = 1.4, hy = -30.4, r = 11;
+    face(g, hx, hy, r, { mouth: p.strike >= 0 && p.strike < 0.5 ? 1 : 0, fierce: true });
+    g.beginPath();
+    g.moveTo(hx - r * 1.05, hy + r * 0.2);
+    g.quadraticCurveTo(hx - r * 1.05, hy - r * 1.1, hx + 0.2 * r, hy - r * 1.75);
+    g.quadraticCurveTo(hx + r * 1.0, hy - r * 1.05, hx + r * 1.0, hy - r * 0.32);
+    g.quadraticCurveTo(hx + r * 0.3, hy - r * 0.52, hx - r * 1.05, hy + r * 0.2);
+    g.closePath();
+    A.fillStroke(g, '#c1ccdb', 2.3);
+    g.save(); g.clip();
+    g.fillStyle = 'rgba(43,18,54,0.3)'; g.fillRect(hx - r * 1.2, hy - r * 2, r * 0.7, r * 2.4);
+    g.restore();
+    A.cap(g, hx + r * 0.88, hy - r * 0.34, hx + r * 0.92, hy + r * 0.38, 2.2, '#cfd8e5', 1.4);
+    g.strokeStyle = '#7f8da1'; g.lineWidth = 1.5;
+    g.beginPath(); g.moveTo(hx - r * 0.9, hy - r * 0.2); g.quadraticCurveTo(hx, hy - r * 0.55, hx + r * 0.9, hy - r * 0.34); g.stroke();
+    A.gloss(g, hx - r * 0.1, hy - r * 1.05, r * 0.4, r * 0.15, -0.5, 0.6);
+    A.poly(g, [hx - 1.4, hy - r * 1.7, hx + 0.6, hy - r * 1.7 - 8, hx + 3.2, hy - r * 1.7], T.base, 1.6);
+
+    g.restore();
+    if (p.strike >= 0 && p.strike < 0.4) {
+      g.save(); g.globalAlpha = 0.7 * (1 - p.strike / 0.4); g.strokeStyle = '#fff'; g.lineWidth = 2; g.lineCap = 'round';
+      [-4, 0, 4].forEach((o, i) => { g.beginPath(); g.moveTo(bx + 40 - i * 7 + st.lunge * 0.5, st.hipY + by + o - 2); g.lineTo(bx + 84 + st.lunge * 0.5, st.hipY + by + o - 1); g.stroke(); });
+      g.restore();
+    }
+  }
+
+  // ===========================================================================
+  // MAGE: team-coloured robe, wizard hat, white beard, staff with a fire orb
+  // ===========================================================================
+  function fireOrb(g, x, y, r, glow, p) {
+    // outer glow
+    const gr = g.createRadialGradient(x, y, 0, x, y, r * (2.3 + glow));
+    gr.addColorStop(0, 'rgba(255,190,70,0.65)');
+    gr.addColorStop(1, 'rgba(255,120,30,0)');
+    g.fillStyle = gr;
+    g.beginPath(); g.arc(x, y, r * (2.3 + glow), 0, 6.3); g.fill();
+    // flame tongues
+    for (let i = 0; i < 3; i++) {
+      const a = -Math.PI / 2 + (i - 1) * 0.7 + Math.sin(p.t * 7 + i * 2) * 0.2;
+      const len = r * (1.5 + glow * 0.8) + (i === 1 ? 3 : 0);
+      g.beginPath();
+      g.moveTo(x + Math.cos(a + 1.5) * r * 0.8, y + Math.sin(a + 1.5) * r * 0.8);
+      g.quadraticCurveTo(x + Math.cos(a) * len * 0.9 + 2, y + Math.sin(a) * len * 0.7, x + Math.cos(a) * len, y + Math.sin(a) * len);
+      g.quadraticCurveTo(x + Math.cos(a) * len * 0.7 - 2, y + Math.sin(a) * len * 0.9, x + Math.cos(a - 1.5) * r * 0.8, y + Math.sin(a - 1.5) * r * 0.8);
+      g.closePath();
+      A.fillStroke(g, '#ff8a1f', 1.6);
+    }
+    // the orb
+    g.beginPath(); g.arc(x, y, r, 0, 6.3);
+    const og = g.createRadialGradient(x - r * 0.3, y - r * 0.3, 0, x, y, r);
+    og.addColorStop(0, '#fffbe0'); og.addColorStop(0.45, '#ffd447'); og.addColorStop(1, '#f0661a');
+    g.fillStyle = og; g.fill();
+    A.stroke(g, 2);
+    A.gloss(g, x - r * 0.35, y - r * 0.4, r * 0.28, r * 0.17, -0.6, 0.85);
+  }
+
+  function mage(g, p, T) {
+    const st = stance(p, { leg: 12, stride: 4.4, lift: 3, bob: 1.8, stand: 4.6, lunge: 2.5 });
+    legs(g, st, { pants: A.shade(T.base, 0.35), boot: '#3a2a22', w: 5.4 });
+
+    g.save();
+    g.translate(st.lunge * 0.4, st.hipY);
+    g.rotate((st.walking ? 0.035 : 0.0) + st.sq * 0.1 - p.wind * 0.06);
+
+    const k = p.strike >= 0 ? 1 - ease(p.strike) : 0;
+    const w = p.strike >= 0 ? 0 : p.wind;
+    // staff: upright while marching, tilts forward while charging a spell, thrusts on release
+    let sx = 8, sy = -6, ang = -1.45 + (st.walking ? Math.sin(p.ph) * 0.05 : 0);
+    if (p.strike >= 0) { sx = lerp(9, 16, k); sy = lerp(-8, -13, k); ang = lerp(-1.3, -0.62, k); }
+    else { sx = lerp(8, 11, w); sy = lerp(-6, -11, w); ang = lerp(ang, -1.02, w); }
+    const dx = Math.cos(ang), dy = Math.sin(ang);
+    const ox = sx + dx * 47, oy = sy + dy * 47;
+
+    // far arm: open hand raised while casting
+    const fhx = lerp(10, 18, Math.max(w, k)), fhy = lerp(-8, -22, Math.max(w, k));
+    A.cap(g, 3, -16.5, fhx, fhy, 6.2, A.shade(T.base, 0.25), 2);
+    A.circ(g, fhx, fhy, 3.4, A.shade(SKIN, 0.08), 1.8);
+    if (Math.max(w, k) > 0.3) A.gloss(g, fhx + 4, fhy - 4, 3, 3, 0, 0.35 * Math.max(w, k));
+
+    // long robe
+    g.beginPath();
+    g.moveTo(-6.4, -18); g.lineTo(6.4, -18); g.lineTo(7.4, -6); g.lineTo(11.4, 8); g.lineTo(5, 6); g.lineTo(0, 8.4);
+    g.lineTo(-5, 6); g.lineTo(-11.4, 8); g.lineTo(-7.8, -6); g.closePath();
+    A.fillStroke(g, T.base, 2.3);
+    g.save(); g.clip();
+    g.fillStyle = 'rgba(43,18,54,0.28)'; g.fillRect(-12, -19, 10, 30);
+    g.fillStyle = T.hi; g.globalAlpha = 0.35; g.fillRect(2, -19, 6, 30); g.globalAlpha = 1;
+    g.strokeStyle = 'rgba(43,18,54,0.35)'; g.lineWidth = 1.2;
+    g.beginPath(); g.moveTo(-2, -4); g.lineTo(-4, 7); g.moveTo(3, -4); g.lineTo(4.4, 7); g.stroke();
+    g.restore();
+    // gold hem, sash and collar
+    g.strokeStyle = '#ffd447'; g.lineWidth = 2.4;
+    g.beginPath(); g.moveTo(-11, 7.4); g.lineTo(-5, 5.4); g.lineTo(0, 7.6); g.lineTo(5, 5.4); g.lineTo(11, 7.4); g.stroke();
+    A.rr(g, -8.2, -8, 16.4, 3.8, 1.6, T.lo, 1.6);
+    A.rr(g, -2, -8.4, 4, 4.6, 1.2, '#ffd447', 1.2);
+    A.poly(g, [-5.5, -18, 5.5, -18, 0.5, -12], '#f6efe0', 1.7);
+
+    // staff with a claw holding the fire orb
+    g.save();
+    g.translate(sx, sy);
+    g.rotate(ang);
+    A.cap(g, -14, 0, 44, 0, 3.2, '#8a5a2e', 1.9);
+    g.strokeStyle = 'rgba(255,230,170,0.5)'; g.lineWidth = 0.9; g.beginPath(); g.moveTo(-10, -1); g.lineTo(40, -1); g.stroke();
+    A.cap(g, 20, -2.6, 24, 2.6, 2, '#6a4222', 1.2);
+    g.restore();
+    g.strokeStyle = INK; g.lineWidth = 4.4; g.lineCap = 'round';
+    g.beginPath(); g.arc(ox, oy, 6.6, ang + 2.3, ang + 4.0); g.stroke();
+    g.strokeStyle = '#8a5a2e'; g.lineWidth = 2.2; g.stroke();
+    fireOrb(g, ox, oy, 5.2 + w * 1.8 + k * 2.2, w + k * 1.2, p);
+    // staff hand
+    arm(g, -2.2, -16.4, sx, sy, 6, T.base);
+
+    // head: pale face, white beard, wizard hat
+    const hx = 1.4, hy = -29.6, r = 10.4;
+    face(g, hx, hy, r, { mouth: 0, fierce: false, skin: '#f4cfae' });
+    // beard + moustache
+    g.beginPath();
+    g.moveTo(hx - r * 0.5, hy + r * 0.55);
+    g.quadraticCurveTo(hx + r * 0.2, hy + r * 0.8, hx + r * 0.85, hy + r * 0.5);
+    g.quadraticCurveTo(hx + r * 0.7, hy + r * 1.75, hx + r * 0.1, hy + r * 2.0);
+    g.quadraticCurveTo(hx - r * 0.7, hy + r * 1.6, hx - r * 0.5, hy + r * 0.55);
+    g.closePath();
+    A.fillStroke(g, '#f1ede6', 2);
+    g.strokeStyle = 'rgba(120,110,130,0.45)'; g.lineWidth = 1.1;
+    g.beginPath(); g.moveTo(hx, hy + r * 0.95); g.lineTo(hx - 0.2, hy + r * 1.7); g.moveTo(hx + r * 0.4, hy + r * 0.95); g.lineTo(hx + r * 0.35, hy + r * 1.55); g.stroke();
+    A.ell(g, hx + r * 0.5, hy + r * 0.48, r * 0.34, r * 0.11, 0.15, '#f1ede6', 1.4);
+    // hat: wide brim + tall bent cone
+    const hatCol = A.shade(T.base, 0.18);
+    const bend = Math.sin(p.t * 5 + p.seed) * 1.6 + (st.walking ? Math.sin(p.ph) * 2.2 : 0);
+    A.ell(g, hx + 0.6, hy - r * 0.58, r * 1.7, r * 0.42, -0.05, T.lo, 2.2);
+    g.beginPath();
+    g.moveTo(hx - r * 0.95, hy - r * 0.72);
+    g.quadraticCurveTo(hx - r * 0.7, hy - r * 2.2, hx - r * 1.1 - bend, hy - r * 3.1 + 2);
+    g.quadraticCurveTo(hx + r * 0.5, hy - r * 2.1, hx + r * 1.0, hy - r * 0.78);
+    g.closePath();
+    A.fillStroke(g, hatCol, 2.3);
+    g.save(); g.clip();
+    g.fillStyle = 'rgba(43,18,54,0.3)'; g.fillRect(hx - r * 1.6, hy - r * 3.4, r * 1.2, r * 3);
+    g.fillStyle = T.hi; g.globalAlpha = 0.35; g.fillRect(hx + r * 0.2, hy - r * 3, r * 0.5, r * 3); g.globalAlpha = 1;
+    g.restore();
+    g.strokeStyle = '#ffd447'; g.lineWidth = 2.6;
+    g.beginPath(); g.moveTo(hx - r * 0.93, hy - r * 0.9); g.quadraticCurveTo(hx, hy - r * 0.62, hx + r * 0.97, hy - r * 0.96); g.stroke();
+    A.star(g, hx + r * 0.1, hy - r * 1.55, r * 0.32, r * 0.14, 5, 0.2);
+    A.fillStroke(g, '#ffd447', 1.1);
+
+    g.restore();
+  }
+
+  // ===========================================================================
+  // COMMANDER: gold-trimmed plate, tall crest, flowing cape, team banner and sword
+  // ===========================================================================
+  function commander(g, p, T) {
+    const st = stance(p, { leg: 14.5, stride: 5, lift: 3.2, bob: 1.8, stand: 5.8, lunge: 4 });
+    legs(g, st, { pants: '#8896ab', boot: '#33271f', w: 7 });
+
+    g.save();
+    g.translate(st.lunge * 0.5, st.hipY);
+    g.rotate((st.walking ? 0.04 : 0.02) + st.sq * 0.18 - p.wind * 0.1);
+
+    // cape streaming behind
+    const sway = st.walking ? Math.sin(p.ph) * 3.2 : Math.sin(p.t * 3 + p.seed) * 1.4;
+    g.beginPath();
+    g.moveTo(-4, -18);
+    g.quadraticCurveTo(-14 - sway, -8, -17 - sway * 1.4, 10);
+    g.lineTo(-10 - sway * 0.6, 7.6);
+    g.lineTo(-7 - sway * 0.4, 11);
+    g.lineTo(0, 8);
+    g.lineTo(5, -4);
+    g.closePath();
+    A.fillStroke(g, T.lo, 2.2);
+    g.strokeStyle = '#ffd447'; g.lineWidth = 1.6;
+    g.beginPath(); g.moveTo(-16.4 - sway * 1.4, 9); g.lineTo(-10 - sway * 0.6, 6.6); g.lineTo(-7 - sway * 0.4, 10); g.lineTo(0, 7); g.stroke();
+
+    // banner (held by the far arm, flag streaming backwards)
+    const flutter = Math.sin(p.t * 8 + p.seed) * 2 + (st.walking ? Math.sin(p.ph) * 2.4 : 0);
+    const px = 12, top = -80;
+    A.cap(g, px, 12, px, top, 3.2, '#8a5a2e', 1.9);
+    g.strokeStyle = 'rgba(255,230,170,0.5)'; g.lineWidth = 0.9; g.beginPath(); g.moveTo(px - 1, 8); g.lineTo(px - 1, top + 6); g.stroke();
+    A.poly(g, [px - 3.4, top + 1, px, top - 8, px + 3.4, top + 1], '#ffe27a', 1.6);   // spear-point finial
+    const FL = 26, FH = 17;
+    g.beginPath();
+    g.moveTo(px, top + 3);
+    for (let i = 1; i <= 6; i++) { const kk = i / 6; g.lineTo(px - kk * FL, top + 3 + Math.sin(kk * 4 + p.t * 8 + p.seed) * (1 + kk * 2.4) + (st.walking ? Math.sin(p.ph - kk * 2) * kk * 1.5 : 0)); }
+    g.lineTo(px - FL + 4 - flutter, top + 3 + FH);
+    for (let i = 6; i >= 0; i--) { const kk = i / 6; g.lineTo(px - kk * FL, top + 3 + FH + Math.sin(kk * 4 + p.t * 8 + p.seed) * (1 + kk * 2.4)); }
+    g.closePath();
+    A.fillStroke(g, T.base, 2.1);
+    g.save(); g.clip();
+    g.fillStyle = T.hi; g.globalAlpha = 0.4; g.fillRect(px - FL - 6, top, FL + 10, 5); g.globalAlpha = 1;
+    g.restore();
+    g.strokeStyle = '#ffd447'; g.lineWidth = 1.5;
+    g.beginPath(); g.moveTo(px - 3, top + 5.5); g.lineTo(px - FL + 3, top + 5.5); g.moveTo(px - 3, top + FH + 0.5); g.lineTo(px - FL + 5, top + FH + 0.5); g.stroke();
+    A.star(g, px - 13, top + 11.5, 5.4, 2.4, 5);
+    A.fillStroke(g, '#ffd447', 1.2);
+    // the arm holding the pole
+    A.cap(g, 3.4, -16.8, px - 0.5, -8, 5.6, '#8f9eb3', 2);
+    A.circ(g, px - 0.5, -8, 3.8, '#aab7ca', 1.8);
+
+    // sword pose (same slash as the knight)
+    let ang, hx0, hy0;
+    if (p.strike >= 0) {
+      const s = p.strike;
+      ang = s < 0.3 ? lerp(-0.3, 0.7, s / 0.3) : lerp(0.7, -0.4, ease((s - 0.3) / 0.7));
+      hx0 = lerp(13, 9, s); hy0 = lerp(-10, -9, s);
+    } else {
+      ang = lerp(-0.45, -2.2, p.wind);
+      hx0 = lerp(9, 4, p.wind); hy0 = lerp(-9, -21, p.wind);
+    }
+
+    // steel breastplate + gold-trimmed tabard
+    torso(g, 9.8, 8.8, 19, '#c0cbdc');
+    A.gloss(g, 4.5, -14, 2.2, 5, 0.2, 0.55);
+    g.beginPath();
+    g.moveTo(-6, -18); g.lineTo(6, -18); g.lineTo(8.2, 9); g.lineTo(0, 6.4); g.lineTo(-8.2, 9);
+    g.closePath();
+    A.fillStroke(g, T.base, 2.1);
+    g.fillStyle = T.hi; g.globalAlpha = 0.4; g.beginPath(); g.moveTo(1, -18); g.lineTo(6, -18); g.lineTo(8, 8.4); g.lineTo(1, 6.2); g.closePath(); g.fill(); g.globalAlpha = 1;
+    g.strokeStyle = '#ffd447'; g.lineWidth = 1.8;
+    g.beginPath(); g.moveTo(-6, -17); g.lineTo(-8.2, 8.6); g.moveTo(6, -17); g.lineTo(8.2, 8.6); g.stroke();
+    A.star(g, 0, -9, 5, 2.2, 5);
+    A.fillStroke(g, '#ffd447', 1.2);
+    A.rr(g, -8.8, -3.8, 17.6, 3.4, 1.4, '#6a4426', 1.6);
+    A.rr(g, -2, -4.2, 4.2, 4.2, 1, '#ffd447', 1.2);
+    A.circ(g, -7.8, -17.2, 5.4, '#d3dcea', 2);
+    A.circ(g, -7.8, -17.2, 2.4, '#ffd447', 1.2);
+
+    // sword arm
+    sword(g, hx0, hy0, ang);
+    arm(g, -2.6, -16.6, hx0, hy0, 5.8, '#aab7ca', '#aab7ca');
+
+    // helm with a tall crest
+    const hx = 1.2, hy = -31, r = 11;
+    const wave = Math.sin(p.t * 5 + p.seed) * 1.6 + (st.walking ? Math.sin(p.ph) * 3 : 0);
+    g.beginPath();
+    g.moveTo(hx + 2, hy - r - 1);
+    g.bezierCurveTo(hx - 2, hy - r - 18, hx - 18 - wave, hy - r - 20 + wave * 0.3, hx - 25 - wave, hy - 2 + wave * 0.5);
+    g.bezierCurveTo(hx - 16 - wave, hy - r - 8, hx - 8, hy - r + 2, hx - 5, hy - r + 5);
+    g.closePath();
+    A.fillStroke(g, T.base, 2.1);
+    g.strokeStyle = '#ffd447'; g.lineWidth = 1.6;
+    g.beginPath(); g.moveTo(hx, hy - r - 3); g.bezierCurveTo(hx - 4, hy - r - 14, hx - 14 - wave, hy - r - 15, hx - 21 - wave, hy - 3); g.stroke();
+    A.circ(g, hx, hy, r + 1.3, '#cdd7e6', 2.4);
+    g.beginPath(); g.roundRect(hx + 0.5, hy - 3.4, 12, 10.4, 3.2); g.fillStyle = SKIN; g.fill(); A.stroke(g, 1.9);
+    eye(g, hx + 4.4, hy + 0.5, r); eye(g, hx + 8.9, hy + 0.5, r * 0.92);
+    g.strokeStyle = INK; g.lineWidth = 1.8; g.lineCap = 'round';
+    g.beginPath(); g.moveTo(hx + 2.4, hy - 3); g.lineTo(hx + 6.2, hy - 2); g.moveTo(hx + 7.4, hy - 2); g.lineTo(hx + 11.4, hy - 3.2); g.stroke();
+    A.ell(g, hx + 7.6, hy + 4.4, 3.6, 1.1, 0, '#6a4426', 1.2);   // moustache
+    // gold band around the helm + gloss
+    g.strokeStyle = '#ffd447'; g.lineWidth = 2.4;
+    g.beginPath(); g.arc(hx, hy, r + 0.6, Math.PI * 1.08, Math.PI * 1.62); g.stroke();
+    A.gloss(g, hx - 3, hy - 7.5, 4.6, 2, -0.4, 0.7);
+
+    g.restore();
+    if (p.strike >= 0 && p.strike < 0.45) swoosh(g, hx0 + st.lunge * 0.5, st.hipY + hy0, -1.9, 0.5, 20, 40, 0.75 * (1 - p.strike / 0.45));
+  }
+
+  Art.units.infantry = { peasant, knight, archer, crossbowman, spearman, mage, commander, face, hairCap, torso, arm, legs, stance, kiteShield, sword, swoosh, eye };
 })();

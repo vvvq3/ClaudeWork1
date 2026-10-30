@@ -169,7 +169,13 @@ body {
 /* ---- unit cards in the bottom bar ------------------------------------------ */
 .unit-card {
   position: relative;
-  border-radius: 14px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.05rem;
+  padding: 0.3rem 0.3rem 0.35rem;
+  border-radius: 12px;
   transition: transform 0.12s cubic-bezier(0.2, 0.8, 0.2, 1), filter 0.15s ease, box-shadow 0.15s ease;
 }
 .unit-card.affordable {
@@ -192,6 +198,16 @@ body {
     0 8px 12px rgba(0, 0, 0, 0.45);
   cursor: pointer;
 }
+.unit-card.affordable-castle {
+  background: linear-gradient(180deg, #6fb4ff 0%, #3b82e6 52%, #2458b8 100%);
+  border: 3px solid #112a63;
+  box-shadow:
+    inset 0 3px 0 rgba(255, 255, 255, 0.45),
+    inset 0 -3px 0 rgba(0, 30, 90, 0.4),
+    0 4px 0 #0b1c47,
+    0 8px 12px rgba(0, 0, 0, 0.45);
+  cursor: pointer;
+}
 .unit-card.locked {
   background: linear-gradient(180deg, #9ea0a8 0%, #74777f 55%, #5d6068 100%);
   border: 3px solid #2e3035;
@@ -200,25 +216,21 @@ body {
 }
 .unit-card.locked .unit-portrait { filter: grayscale(0.85) brightness(0.8); }
 .unit-card.affordable:hover,
-.unit-card.affordable-bonus:hover {
+.unit-card.affordable-bonus:hover,
+.unit-card.affordable-castle:hover {
   transform: translateY(-5px);
   filter: brightness(1.08);
 }
 .unit-card.affordable:active,
-.unit-card.affordable-bonus:active { transform: translateY(1px); }
-.unit-portrait {
-  width: 4.5rem;
-  height: 4.5rem;
-  margin: -0.45rem -0.35rem -0.4rem -0.45rem;
-  object-fit: contain;
-  filter: drop-shadow(0 2px 0 rgba(0, 0, 0, 0.3));
-  pointer-events: none;
-  max-width: 100%;
-}
-.card-num {
-  width: 1.35rem;
-  height: 1.35rem;
-  flex-shrink: 0;
+.unit-card.affordable-bonus:active,
+.unit-card.affordable-castle:active { transform: translateY(1px); }
+.card-key {
+  position: absolute;
+  top: -8px;
+  left: -8px;
+  z-index: 1;
+  width: 1.3rem;
+  height: 1.3rem;
   border-radius: 50%;
   background: radial-gradient(circle at 35% 30%, #fff6b8, #ffd447 60%, #d99a0c);
   border: 2px solid var(--ink);
@@ -229,6 +241,38 @@ body {
   align-items: center;
   justify-content: center;
 }
+.card-name {
+  width: 100%;
+  padding: 0 0.1rem;
+  text-align: center;
+  color: #fff;
+  font-weight: 800;
+  font-size: 0.7rem;
+  letter-spacing: -0.01em;
+  line-height: 1.15;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.card-art { display: flex; justify-content: center; width: 100%; }
+.unit-portrait {
+  width: 3.7rem;
+  height: 3.7rem;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 0 rgba(0, 0, 0, 0.3));
+  pointer-events: none;
+  max-width: 100%;
+}
+.price-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  width: 100%;
+  padding: 0.08rem 0.25rem;
+  border-radius: 9px;
+}
+.price-num { color: #fff; font-weight: 900; font-size: 0.98rem; line-height: 1.25; }
 .price-btn-affordable {
   background: linear-gradient(180deg, #b4f063 0%, #62c322 55%, #49a312 100%);
   border: 2.5px solid #1c480a;
@@ -239,12 +283,56 @@ body {
   border: 2.5px solid #4a2205;
   box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.6), 0 2px 0 #331803;
 }
+.price-btn-castle {
+  background: linear-gradient(180deg, #ffc24a 0%, #f19a1a 55%, #cf7508 100%);
+  border: 2.5px solid #4a2205;
+  box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.6), 0 2px 0 #331803;
+}
 .price-btn-locked {
   background: linear-gradient(180deg, #8d8f96 0%, #6c6f76 100%);
   border: 2.5px solid #2a2b2e;
   box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.28), 0 2px 0 #1b1c1e;
 }
 .unit-card.locked .coin { filter: grayscale(1) brightness(0.8); }
+
+/* ---- tooltip ------------------------------------------------------------------------ */
+.unit-tooltip {
+  position: fixed;
+  z-index: 60;
+  width: max-content;
+  max-width: min(300px, calc(100vw - 12px));
+  padding: 0.55rem 0.7rem 0.5rem;
+  border-radius: 12px;
+  border: 3px solid var(--ink);
+  background:
+    repeating-linear-gradient(92deg, rgba(0, 0, 0, 0.06) 0 2px, transparent 2px 13px),
+    linear-gradient(180deg, #7a4d2b 0%, #4f301a 100%);
+  box-shadow: inset 0 2px 0 rgba(255, 214, 150, 0.35), 0 8px 18px rgba(0, 0, 0, 0.6);
+  color: #fff4d6;
+  pointer-events: none;
+  font-size: 0.78rem;
+  line-height: 1.3;
+}
+.unit-tooltip .tt-title { font-weight: 900; font-size: 1.05rem; color: #ffd447; line-height: 1.15; }
+.unit-tooltip .tt-role { color: #f3d9a8; font-weight: 600; margin-bottom: 0.35rem; }
+.unit-tooltip .tt-grid {
+  display: grid;
+  grid-template-columns: auto auto;
+  gap: 0.1rem 0.9rem;
+  padding: 0.35rem 0.5rem;
+  border-radius: 8px;
+  background: rgba(20, 10, 4, 0.5);
+}
+.unit-tooltip .tt-grid span { color: #f3d9a8; }
+.unit-tooltip .tt-grid b { color: #fff; text-align: right; font-weight: 800; }
+.unit-tooltip .tt-notes { margin: 0.4rem 0 0; padding: 0; list-style: none; }
+.unit-tooltip .tt-notes li { position: relative; padding-left: 0.9rem; margin-top: 0.12rem; }
+.unit-tooltip .tt-notes li::before { content: '•'; position: absolute; left: 0.2rem; color: #ffd447; }
+.unit-tooltip .tt-ladder li::before { content: none; }
+.unit-tooltip .tt-ladder li { padding-left: 0; color: #cbb98e; }
+.unit-tooltip .tt-ladder li.tt-done { color: #8be04a; }
+.unit-tooltip .tt-ladder li.tt-next { color: #fff; font-weight: 700; }
+.unit-tooltip .tt-key { margin-top: 0.4rem; font-size: 0.7rem; color: #cbb98e; text-align: right; }
 
 /* ---- upgrade cards ------------------------------------------------------------ */
 .upgrade-card {
@@ -376,6 +464,15 @@ body {
   .coin { width: 1.7rem; height: 1.7rem; }
   .hud-btn { width: 1.8rem; height: 1.8rem; font-size: 0.8rem; }
   .hud-controls { padding-left: 0.4rem; gap: 0.25rem; }
-  .unit-card .unit-portrait { margin: 0 auto; }
+  .unit-card { padding: 0.2rem 0.15rem 0.25rem; }
+  .unit-portrait { width: 3rem; height: 3rem; }
+  .card-name { font-size: 0.6rem; }
+  .price-num { font-size: 0.8rem; }
+  .price-btn { padding: 0.04rem 0.1rem; gap: 0.12rem; }
   .upgrade-card .up-icon-img, .up-portrait { width: 3.6rem; height: 3.6rem; }
+}
+
+/* touch screens have no keyboard: hide the hotkey badges */
+@media (hover: none) {
+  .card-key { display: none; }
 }

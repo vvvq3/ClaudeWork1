@@ -158,12 +158,15 @@
     </div>
   </div>
 
-  <!-- BOTTOM UNIT BAR (6 UNITS + 1 BUY UPGRADE CARD BUTTON = 7 SLOTS WITH HOTKEYS 1-7) -->
+  <!-- BOTTOM BAR: 9 units (keys 1-9), 3 bonus cards (0), castle upgrade (-) -->
   <div class="wood-bar-bottom z-20 px-2 sm:px-4 py-2 sm:py-2.5 w-full shrink-0">
-    <div id="unitBarContainer" class="max-w-6xl mx-auto grid grid-cols-7 gap-1.5 sm:gap-2.5">
+    <div id="unitBarContainer" class="max-w-6xl mx-auto grid grid-cols-6 sm:grid-cols-11 gap-x-1.5 gap-y-2.5 sm:gap-2">
       <!-- Populated by JS -->
     </div>
   </div>
+
+  <!-- Unit / upgrade tooltip (filled by js/ui.js) -->
+  <div id="unitTooltip" class="unit-tooltip hidden"></div>
 
   <!-- START SCREEN -->
   <div id="startScreen" class="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto">
@@ -175,14 +178,14 @@
       </p>
 
       <ul class="text-left text-amber-100 text-xs sm:text-sm font-semibold space-y-1.5 bg-[#26160c] border-2 border-[#472b18] rounded-xl p-3 mb-4">
-        <li>🪙 Золото капает каждую секунду. Покупайте войска от крестьян до катапульт.</li>
+        <li>🪙 Золото капает каждую секунду. Покупайте войска от крестьян до катапульт и магов, улучшайте замок.</li>
         <li>🃏 Каждые 20 секунд игра встаёт на паузу: выберите одну из 3 карт улучшений.</li>
         <li>🤖 Противник тоже усиливается и нанимает армию.</li>
         <li>🏆 Побеждает тот, кто первым разрушит замок врага.</li>
       </ul>
 
       <div class="text-amber-200/90 text-[11px] sm:text-xs font-bold mb-4">
-        Горячие клавиши: <kbd class="kbd">1</kbd>–<kbd class="kbd">6</kbd> войска, <kbd class="kbd">7</kbd> купить карты, <kbd class="kbd">Пробел</kbd> пауза
+        Горячие клавиши: <kbd class="kbd">1</kbd>–<kbd class="kbd">9</kbd> войска, <kbd class="kbd">0</kbd> купить карты, <kbd class="kbd">-</kbd> улучшить замок, <kbd class="kbd">Пробел</kbd> пауза
       </div>
 
       <button id="btnStartGame" class="big-btn w-full py-3 price-btn-affordable text-white font-black text-lg sm:text-xl text-outline tracking-wide">

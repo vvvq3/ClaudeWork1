@@ -15,11 +15,6 @@ Art.castle = (function () {
   const STONE = '#b6bdc9', STONE_LO = '#8590a2', STONE_HI = '#dde2ea';
   const BOX = { W: 200, H: 300, ox: 130, oy: 284 };   // bitmap size and origin offset (css px)
 
-  const SLOTS = [
-    { x: -38, y: -92 },
-    { x: -5,  y: -98 },
-    { x: 28,  y: -92 }
-  ];
   const FLAGS = [
     { x: -92, y: -214, s: 1.0 },
     { x: -52, y: -246, s: 1.25 },
@@ -420,8 +415,38 @@ Art.castle = (function () {
     }
   }
 
-  function draw(g, cx, cy, isPlayer, hpRatio, time, archerAnims, archerTimers) {
+  // ---- garrison ------------------------------------------------------------------------------
+  // How each garrison member is drawn: unit sprite, size on the castle, shot cooldown.
+  const GARRISON_LOOK = {
+    archer:      { unit: 'archer',      mul: 0.74, cd: 1.25 },
+    crossbowman: { unit: 'crossbowman', mul: 0.74, cd: 1.45 },
+    mage:        { unit: 'mage',        mul: 0.88, cd: 2.0 },
+    catapult:    { unit: 'catapult',    mul: 0.72, cd: 2.4 },
+    commander:   { unit: 'commander',   mul: 0.84, cd: 1 }
+  };
+
+  function drawDefender(g, d, teamKey, time, idx) {
+    const slot = CASTLE_SLOTS[d.slot];
+    const look = GARRISON_LOOK[d.kind];
+    const seed = d.slot * 0.31 + idx * 0.07 + (teamKey === 'player' ? 0 : 0.17);
+    g.save();
+    g.translate(slot.x, slot.y + (slot.y < 0 ? 2 : 0));
+    if (slot.y > 0) {   // yard units stand on the ground: soft shadow
+      g.fillStyle = 'rgba(20, 45, 12, 0.3)';
+      g.beginPath(); g.ellipse(0, 1, d.kind === 'catapult' ? 34 : 12, d.kind === 'catapult' ? 7 : 4.4, 0, 0, 6.3); g.fill();
+    }
+    A.units.blit(g, look.unit, teamKey, {
+      ph: 0, walk: 0,
+      wind: d.kind === 'commander' ? 0 : A.clamp(1 - d.timer / look.cd),
+      strike: d.anim > 0 ? 1 - d.anim : -1,
+      seed
+    }, time, 1, look.mul);
+    g.restore();
+  }
+
+  function draw(g, cx, cy, isPlayer, hpRatio, time, defenders) {
     const T = isPlayer ? A.TEAM.player : A.TEAM.enemy;
+    const teamKey = isPlayer ? 'player' : 'enemy';
     const lvl = levelOf(hpRatio);
     const bm = get(isPlayer, lvl);
     g.save();
@@ -430,21 +455,8 @@ Art.castle = (function () {
 
     if (!isPlayer) g.scale(-1, 1);
 
-    // archers on the wall (cached sprites, scaled down to fit the battlements)
-    const teamKey = isPlayer ? 'player' : 'enemy';
-    SLOTS.forEach((s, i) => {
-      const anim = archerAnims[i] || 0;
-      const timer = archerTimers[i] || 0;
-      g.save();
-      g.translate(s.x, s.y + 2);
-      A.units.blit(g, 'archer', teamKey, {
-        ph: 0, walk: 0,
-        wind: A.clamp(1 - timer / 1.25),
-        strike: anim > 0 ? 1 - anim : -1,
-        seed: i * 0.31 + (isPlayer ? 0 : 0.17)
-      }, time, 1, false, 0.74);
-      g.restore();
-    });
+    // defenders on the wall stand behind the merlons (cached sprites scaled down to fit)
+    defenders.forEach((d, i) => { if (CASTLE_SLOTS[d.slot].y < 0) drawDefender(g, d, teamKey, time, i); });
 
     g.restore();
     g.save();
@@ -457,10 +469,16 @@ Art.castle = (function () {
       drawFire(g, time, 10, -44, 1);
       drawFire(g, time + 1.3, -90, -150, 0.8);
     }
+    // defenders in front of the wall (mage, catapult, commander), nearest to the viewer last
+    defenders
+      .map((d, i) => ({ d, i }))
+      .filter(o => CASTLE_SLOTS[o.d.slot].y > 0)
+      .sort((a, b) => CASTLE_SLOTS[a.d.slot].y - CASTLE_SLOTS[b.d.slot].y)
+      .forEach(o => drawDefender(g, o.d, teamKey, time, o.i));
     g.restore();
   }
 
   function clearCache() { cache.clear(); }
 
-  return { draw, clearCache, SLOTS, FLAGS, BOX, levelOf };
+  return { draw, clearCache, FLAGS, BOX, levelOf };
 })();

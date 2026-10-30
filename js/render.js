@@ -40,10 +40,10 @@ function renderScene(dt) {
   // castles with their wall archers
   Art.castle.draw(ctx, leftCastleX, roadCenterY + 18, true,
     gameState.playerCastleHp / gameState.playerCastleMaxHp, time,
-    gameState.playerCastleArcherAnim, gameState.playerCastleArcherTimers);
+    gameState.playerCastleDefenders);
   Art.castle.draw(ctx, rightCastleX, roadCenterY + 18, false,
     gameState.enemyCastleHp / gameState.enemyCastleMaxHp, time,
-    gameState.enemyCastleArcherAnim, gameState.enemyCastleArcherTimers);
+    gameState.enemyCastleDefenders);
 
   // living units, back to front
   const sorted = [...gameState.units].sort((a, b) => a.y - b.y);

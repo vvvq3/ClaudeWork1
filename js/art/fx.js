@@ -1,5 +1,5 @@
 // ============================================================================
-// VISUAL EFFECTS: impact starbursts, sparks, dust puffs, debris, stars, trails,
+// VISUAL EFFECTS: impact starbursts, sparks, debris, stars, trails,
 // floating numbers, lightning. Pure visuals: nothing here touches game rules.
 // Particles/bursts/texts live in gameState arrays and are updated by
 // updateEffects(dt), which the battle loop calls once per simulation step.
@@ -15,16 +15,6 @@ Art.fx = (function () {
       const a = Math.random() * Math.PI * 2, s = R(60, 150) * speed;
       add({ kind: 'spark', x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s - 25, life: R(0.18, 0.36), maxLife: 0.36, color, len: R(5, 10), grav: 280, drag: 1.2 });
     }
-  }
-  function dust(x, y, n = 3, size = 1, spread = 1) {
-    for (let i = 0; i < n; i++) {
-      const life = R(0.45, 0.8);
-      add({ kind: 'dust', x: x + R(-7, 7) * spread, y: y + R(-4, 3), vx: R(-26, 26) * spread, vy: R(-30, -8), r: R(4.5, 8) * size, grow: R(14, 26) * size, life, maxLife: life, grav: -12, drag: 2.2, tone: 0 });
-    }
-  }
-  function smoke(x, y, size = 1, tone = 1) {
-    const life = R(0.5, 0.9);
-    add({ kind: 'dust', x: x + R(-2, 2), y, vx: R(-8, 8), vy: R(-24, -10), r: R(3.5, 6) * size, grow: R(10, 18) * size, life, maxLife: life, grav: -16, drag: 1.5, tone });
   }
   function stars(x, y, n = 3, color = '#ffe45e') {
     for (let i = 0; i < n; i++) {
@@ -53,14 +43,9 @@ Art.fx = (function () {
       add({ kind: 'twinkle', x: x + R(-30, 30), y: y + R(-40, 20), vx: 0, vy: R(-20, -6), r: R(3, 6), life: R(0.5, 0.9), maxLife: 0.9, grav: 0, drag: 0 });
     }
   }
-  // Cartoon "poof": big dust ring with a few stars.
+  // Death sparkle: a few stars pop out of the fallen unit (no dust clouds).
   function poof(x, y, size = 1) {
-    for (let i = 0; i < 7; i++) {
-      const a = (i / 7) * Math.PI * 2 + R(-0.3, 0.3), s = R(28, 52) * size;
-      const life = R(0.5, 0.8);
-      add({ kind: 'dust', x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s * 0.55 - 12, r: R(5, 8) * size, grow: R(16, 26) * size, life, maxLife: life, grav: -8, drag: 3, tone: 0 });
-    }
-    stars(x, y - 10 * size, 3);
+    stars(x, y - 10 * size, size > 1 ? 5 : 3);
   }
   function lightning(x, y) {
     const pts = [[x + R(-12, 12), -10]];
@@ -105,21 +90,6 @@ Art.fx = (function () {
   }
 
   // ---- drawing ---------------------------------------------------------------------------
-  function puff(g, p) {
-    const t = p.life / p.maxLife;
-    const a = Math.min(1, t * 1.6) * (p.tone ? 0.8 : 0.92);
-    const fill = p.tone ? '#8a8294' : '#f7f4ee', shade = p.tone ? '#615a6c' : '#d6cfc6';
-    g.save();
-    g.globalAlpha = a;
-    g.translate(p.x, p.y);
-    const parts = [[0, 0, 1], [-0.7, 0.2, 0.72], [0.7, 0.15, 0.78], [0.05, -0.55, 0.7]];
-    g.lineJoin = 'round';
-    parts.forEach(([dx, dy, k]) => { g.beginPath(); g.arc(dx * p.r, dy * p.r, p.r * k, 0, 6.3); g.lineWidth = 3.6; g.strokeStyle = 'rgba(70,55,70,0.55)'; g.stroke(); });
-    parts.forEach(([dx, dy, k]) => { g.beginPath(); g.arc(dx * p.r, dy * p.r, p.r * k, 0, 6.3); g.fillStyle = fill; g.fill(); });
-    g.fillStyle = shade; g.globalAlpha = a * 0.7;
-    parts.forEach(([dx, dy, k]) => { g.beginPath(); g.arc(dx * p.r + p.r * 0.18, dy * p.r + p.r * 0.28, p.r * k * 0.7, 0.1, Math.PI - 0.1); g.fill(); });
-    g.restore();
-  }
   function plusSign(g, x, y, r) {
     g.beginPath();
     g.rect(-r * 0.32, -r, r * 0.64, r * 2); g.rect(-r, -r * 0.32, r * 2, r * 0.64);
@@ -132,7 +102,6 @@ Art.fx = (function () {
     g = ctx;
     for (const p of list) {
       const t = p.life / p.maxLife;
-      if (p.kind === 'dust') { puff(g, p); continue; }
       g.save();
       g.translate(p.x, p.y);
       if (p.kind === 'spark') {
@@ -173,7 +142,7 @@ Art.fx = (function () {
       const s = c.scale * grow * (1 - t * 0.25);
       const alpha = t > 0.6 ? 1 - (t - 0.6) / 0.4 : 1;
       const kind = c.kind || 'hit';
-      const pal = kind === 'boulder' ? ['#ff6a1a', '#ffb02e', '#fff0a6'] : kind === 'magic' ? ['#a855f7', '#e0b3ff', '#ffffff'] : ['#ff9a1f', '#ffd447', '#fffbe6'];
+      const pal = kind === 'boulder' ? ['#ff6a1a', '#ffb02e', '#fff0a6'] : kind === 'fire' ? ['#ff4d12', '#ffa62a', '#fff0a6'] : kind === 'magic' ? ['#a855f7', '#e0b3ff', '#ffffff'] : ['#ff9a1f', '#ffd447', '#fffbe6'];
       const R0 = 21 * s;
       ctx.save();
       ctx.translate(c.x, c.y);
@@ -246,8 +215,38 @@ Art.fx = (function () {
     ctx.fillStyle = 'rgba(20,45,12,0.26)';
     ctx.beginPath(); ctx.ellipse(p.x, gy, p.projType === 'boulder' ? 7 : 4.5, p.projType === 'boulder' ? 2.6 : 1.6, 0, 0, 6.3); ctx.fill();
 
+    if (p.projType === 'fireball') {
+      if (dt > 0 && Math.random() < 0.6) sparks(p.x, p.y, 1, '#ffb02e', 0.35);
+      const fn = p.trail.length;
+      for (let i = 0; i < fn; i++) {
+        const k = (i + 1) / fn;
+        ctx.fillStyle = `rgba(255, ${Math.round(90 + 110 * k)}, 40, ${k * 0.55})`;
+        ctx.beginPath(); ctx.arc(p.trail[i].x, p.trail[i].y, 2 + k * 5.5, 0, 6.3); ctx.fill();
+      }
+      const fdx = p.x - (p.prevX != null ? p.prevX : p.startX), fdy = p.y - (p.prevY != null ? p.prevY : p.startY);
+      const fa = Math.abs(fdx) + Math.abs(fdy) > 0.01 ? Math.atan2(fdy, fdx) : 0;
+      ctx.save();
+      ctx.translate(p.x, p.y);
+      ctx.rotate(fa);
+      ctx.lineJoin = 'round';
+      // flame tail
+      ctx.beginPath();
+      ctx.moveTo(-2, -6.5);
+      ctx.quadraticCurveTo(-13, -5, -20 - Math.random() * 3, 0);
+      ctx.quadraticCurveTo(-13, 5, -2, 6.5);
+      ctx.closePath();
+      A.fillStroke(ctx, '#ff8a1f', 1.8);
+      // glowing head
+      const og = ctx.createRadialGradient(-1.5, -1.5, 0, 0, 0, 7.5);
+      og.addColorStop(0, '#fffbe0'); og.addColorStop(0.5, '#ffd447'); og.addColorStop(1, '#f0661a');
+      ctx.beginPath(); ctx.arc(0, 0, 7, 0, 6.3);
+      ctx.fillStyle = og; ctx.fill();
+      A.stroke(ctx, 1.9);
+      A.gloss(ctx, -2.4, -2.6, 2.4, 1.4, -0.6, 0.85);
+      ctx.restore();
+      return;
+    }
     if (p.projType === 'boulder') {
-      if (dt > 0 && Math.random() < 0.55) smoke(p.x, p.y, 0.7, 1);
       ctx.save();
       ctx.translate(p.x, p.y);
       ctx.rotate(p.progress * 9);
@@ -293,7 +292,7 @@ Art.fx = (function () {
     ctx.restore();
   }
 
-  return { sparks, dust, smoke, stars, debris, plus, coins, sparkle, poof, lightning, update, drawParticles, drawBursts, drawTexts, drawBolts, drawProjectile };
+  return { sparks, stars, debris, plus, coins, sparkle, poof, lightning, update, drawParticles, drawBursts, drawTexts, drawBolts, drawProjectile };
 })();
 
 // ---- global spawn helpers used by the battle and upgrade code --------------------------------
@@ -311,17 +310,18 @@ function spawnHitParticles(x, y, color = '#fbbf24', count = 5) {
 function spawnClashStarburst(x, y, kind = 'hit', big = 1) {
   const exists = gameState.clashes.some(c => Math.abs(c.x - x) < 14 && c.life > 0.14 && c.kind === kind);
   if (exists) return;
-  const base = kind === 'boulder' ? 1.7 : 0.95;
+  const base = kind === 'boulder' ? 1.7 : kind === 'fire' ? 1.25 : 0.95;
   gameState.clashes.push({
     x, y, kind, rot: Math.random() * 6,
-    life: kind === 'boulder' ? 0.34 : 0.24,
-    maxLife: kind === 'boulder' ? 0.34 : 0.24,
+    life: kind === 'boulder' ? 0.34 : kind === 'fire' ? 0.3 : 0.24,
+    maxLife: kind === 'boulder' ? 0.34 : kind === 'fire' ? 0.3 : 0.24,
     scale: (0.85 + Math.random() * 0.3) * base * big
   });
   if (kind === 'boulder') {
-    Art.fx.dust(x, y + 8, 5, 1.3, 1.6);
     Art.fx.debris(x, y, 6);
     Art.fx.sparks(x, y, 8, '#ff9a1f', 1.2);
+  } else if (kind === 'fire') {
+    Art.fx.sparks(x, y, 7, '#ff8a1f', 1.1);
   } else {
     Art.fx.sparks(x, y, 3, '#ffd447');
   }

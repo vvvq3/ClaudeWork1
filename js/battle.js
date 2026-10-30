@@ -39,7 +39,8 @@ function createUnitEntity(team, unitType) {
     animPhase: Math.random() * Math.PI * 2,
     seed: Math.random() * 6.28,
     attackAnim: 0,
-    hitFlash: 0
+    inspired: false,   // commander aura active on this unit
+    auraHpBonus: 0
   };
 }
 
@@ -60,7 +61,6 @@ function spawnPlayerUnit(unitId) {
 
   const spawned = createUnitEntity('player', unitType);
   gameState.units.push(spawned);
-  Art.fx.dust(spawned.x - 6, spawned.y + 2, 3, 0.9);
   updateHUD();
 }
 
@@ -69,7 +69,6 @@ function spawnEnemyUnit(unitId) {
   if (!unitType) return;
   const spawned = createUnitEntity('enemy', unitType);
   gameState.units.push(spawned);
-  Art.fx.dust(spawned.x + 6, spawned.y + 2, 3, 0.9);
 }
 
 
@@ -78,119 +77,159 @@ function getUnitModelCenterY(u) {
   return u.y - (u.type.id === 'cavalry' ? 18 : 13);
 }
 
-// Each castle has 3 archers on its battlements with 2X firing range (570px)!
-function updateCastleArchers(dt) {
+// ---- castle garrison ------------------------------------------------------------------
+// Every castle starts with 3 wall archers; castle upgrades add a 4th archer, a crossbowman,
+// a mage, a catapult and a commander. Each shooter uses the stats of its unit type.
+function castleSlotWorld(team, slotIndex) {
   const { leftCastleX, rightCastleX, roadCenterY } = getCastlePositions();
-  const archerType = UNIT_TYPES.find(u => u.id === 'archer');
-  const castleRange = 570;
+  const slot = CASTLE_SLOTS[slotIndex];
+  const castleY = roadCenterY + 18;
+  return team === 'player'
+    ? { x: leftCastleX + slot.x, y: castleY + slot.y }
+    : { x: rightCastleX - slot.x, y: castleY + slot.y };
+}
 
-  // Player Castle 3 Archers
-  const pArcherStats = getTeamUnitStats('player', archerType);
-  const pTurretPositions = [
-    { x: leftCastleX - 38, y: roadCenterY - 96 },
-    { x: leftCastleX - 5,  y: roadCenterY - 102 },
-    { x: leftCastleX + 28, y: roadCenterY - 96 }
-  ];
+function fireCastleProjectile(team, def, kind, unitType, target) {
+  const pos = castleSlotWorld(team, def.slot);
+  const stats = getTeamUnitStats(team, unitType);
+  const sx = pos.x, sy = pos.y + kind.muzzleY;
+  gameState.projectiles.push({
+    team,
+    sourceUnitTypeId: 'castle_archers',   // statistics row
+    srcType: unitType.id,                 // real type, for damage bonuses
+    projType: unitType.projectileType,
+    startX: sx, startY: sy, x: sx, y: sy, prevX: sx, prevY: sy,
+    targetUnitRef: target,
+    targetIsCastle: false,
+    targetX: target.x,
+    targetY: getUnitModelCenterY(target),
+    progress: 0,
+    speed: unitType.projectileSpeed * kind.speedMul,
+    damage: stats.atk,
+    splash: unitType.splash || 0,
+    multiTarget: unitType.multiTarget || 0,
+    arcHeight: kind.arc
+  });
+}
 
-  gameState.playerCastleArcherTimers.forEach((timer, idx) => {
-    gameState.playerCastleArcherAnim[idx] = Math.max(0, gameState.playerCastleArcherAnim[idx] - dt * 2.5);
-    let t = timer - dt;
-    if (t <= 0) {
+function updateCastleDefenders(dt) {
+  const { leftCastleX, rightCastleX } = getCastlePositions();
+  for (const team of ['player', 'enemy']) {
+    const defenders = team === 'player' ? gameState.playerCastleDefenders : gameState.enemyCastleDefenders;
+    const castleX = team === 'player' ? leftCastleX : rightCastleX;
+    for (const def of defenders) {
+      def.anim = Math.max(0, def.anim - dt * 2.5);
+      const kind = CASTLE_DEFENDER_KINDS[def.kind];
+      if (!kind.range) continue;            // the commander does not shoot
+      def.timer -= dt;
+      if (def.timer > 0) continue;
+
       let target = null;
-      let bestDist = castleRange;
+      let bestDist = kind.range;
       for (const u of gameState.units) {
-        if (u.team === 'enemy' && u.hp > 0) {
-          const d = u.x - (leftCastleX + 40);
-          if (d <= bestDist) {
-            bestDist = d;
-            target = u;
-          }
+        if (u.team === team || u.hp <= 0) continue;
+        const d = team === 'player' ? u.x - (castleX + 40) : (castleX - 40) - u.x;
+        if (d <= bestDist) {
+          bestDist = d;
+          target = u;
         }
       }
-      if (target) {
-        t = archerType.atkCooldown;
-        gameState.playerCastleArcherAnim[idx] = 1.0;
-        const pos = pTurretPositions[idx];
-        gameState.projectiles.push({
-          team: 'player',
-          sourceUnitTypeId: 'castle_archers',
-          projType: 'arrow',
-          startX: pos.x,
-          startY: pos.y,
-          x: pos.x,
-          y: pos.y,
-          prevX: pos.x,
-          prevY: pos.y,
-          targetUnitRef: target,
-          targetIsCastle: false,
-          targetX: target.x,
-          targetY: getUnitModelCenterY(target),
-          progress: 0,
-          speed: archerType.projectileSpeed * 1.15,
-          damage: pArcherStats.atk,
-          splash: 0,
-          arcHeight: 36
-        });
-      } else {
-        t = 0.2;
+      const unitType = UNIT_TYPES.find(t => t.id === kind.unit);
+      if (!target) {
+        def.timer = 0.2;
+        continue;
+      }
+      def.timer = unitType.atkCooldown;
+      def.anim = 1.0;
+      fireCastleProjectile(team, def, kind, unitType, target);
+    }
+  }
+}
+
+// Buys the next castle upgrade for a team (gold is paid by the caller): a new garrison member
+// plus extra castle health.
+function applyCastleUpgrade(team) {
+  const isPlayer = team === 'player';
+  const level = isPlayer ? gameState.playerCastleLevel : gameState.enemyCastleLevel;
+  if (level >= CASTLE_UPGRADES.length) return false;
+  const up = CASTLE_UPGRADES[level];
+
+  const defenders = isPlayer ? gameState.playerCastleDefenders : gameState.enemyCastleDefenders;
+  defenders.push({ kind: up.kind, slot: up.slot, timer: 0.6, anim: 0 });
+  if (isPlayer) {
+    gameState.playerCastleLevel++;
+    gameState.playerCastleMaxHp += CASTLE_UPGRADE_HP;
+    gameState.playerCastleHp += CASTLE_UPGRADE_HP;
+    gameState.unitBattleStats.castle_archers.spawned++;
+  } else {
+    gameState.enemyCastleLevel++;
+    gameState.enemyCastleMaxHp += CASTLE_UPGRADE_HP;
+    gameState.enemyCastleHp += CASTLE_UPGRADE_HP;
+  }
+
+  // feedback
+  const pos = castleSlotWorld(team, up.slot);
+  const fx = castleFxPos(team);
+  Art.fx.sparkle(pos.x, pos.y - 24, 8);
+  Art.fx.debris(pos.x, pos.y, 4);
+  spawnFloatingText(fx.x + (isPlayer ? 20 : -20), fx.y - 30, (isPlayer ? '' : 'ВРАГ: ') + `ЗАМОК: ${up.name.toUpperCase()}!`, isPlayer ? '#fde047' : '#93c5fd');
+  spawnFloatingText(fx.x + (isPlayer ? 20 : -20), fx.y - 8, `+${CASTLE_UPGRADE_HP} HP`, '#4ade80');
+  SoundFX.play('upgrade');
+
+  const row = document.getElementById(isPlayer ? 'playerBuffsRow' : 'enemyBuffsRow');
+  if (row) {
+    const chip = document.createElement('span');
+    chip.className = 'buff-chip ' + (isPlayer ? 'buff-player' : 'buff-enemy');
+    chip.textContent = `Замок: ${up.name}`;
+    row.appendChild(chip);
+  }
+  return true;
+}
+
+// ---- commander aura -----------------------------------------------------------------------
+// While a team has a commander (on the field or in its castle), every fighter of that team is
+// inspired: +30% health and damage, and slow healing. The bonus disappears with the commander.
+function teamHasCommander(team) {
+  if (gameState.units.some(u => u.team === team && u.hp > 0 && u.type.isSupport)) return true;
+  const defenders = team === 'player' ? gameState.playerCastleDefenders : gameState.enemyCastleDefenders;
+  return defenders.some(d => d.kind === 'commander');
+}
+
+function effectiveAtk(u) {
+  return u.inspired ? u.atk * COMMANDER_AURA.atkMult : u.atk;
+}
+
+function updateInspiration(dt) {
+  for (const team of ['player', 'enemy']) {
+    const active = teamHasCommander(team);
+    if (active !== gameState.auraActive[team]) {
+      gameState.auraActive[team] = active;
+      const { leftCastleX, rightCastleX, roadCenterY } = getCastlePositions();
+      const fx = team === 'player' ? leftCastleX + 90 : rightCastleX - 90;
+      spawnFloatingText(fx, roadCenterY - 100,
+        active ? (team === 'player' ? 'ВДОХНОВЕНИЕ! +30%' : 'ВРАГ ВДОХНОВЛЁН! +30%') : 'Вдохновение угасло',
+        active ? '#ffe36b' : '#cbd5e1');
+    }
+    for (const u of gameState.units) {
+      if (u.team !== team || u.hp <= 0) continue;
+      if (active && !u.inspired) {
+        u.inspired = true;
+        u.auraHpBonus = Math.round(u.maxHp * (COMMANDER_AURA.hpMult - 1));
+        u.maxHp += u.auraHpBonus;
+        u.hp += u.auraHpBonus;
+        Art.fx.sparkle(u.x, u.y - 24, 2);
+      } else if (!active && u.inspired) {
+        u.inspired = false;
+        u.maxHp -= u.auraHpBonus;
+        u.auraHpBonus = 0;
+        u.hp = Math.min(u.hp, u.maxHp);
+      }
+      if (u.inspired && u.hp < u.maxHp) {
+        u.hp = Math.min(u.maxHp, u.hp + u.maxHp * COMMANDER_AURA.healPerSec * dt);
+        if (Math.random() < dt * 1.4) Art.fx.plus(u.x, u.y - 22, 1);
       }
     }
-    gameState.playerCastleArcherTimers[idx] = t;
-  });
-
-  // Enemy Castle 3 Archers
-  const eArcherStats = getTeamUnitStats('enemy', archerType);
-  const eTurretPositions = [
-    { x: rightCastleX + 38, y: roadCenterY - 96 },
-    { x: rightCastleX + 5,  y: roadCenterY - 102 },
-    { x: rightCastleX - 28, y: roadCenterY - 96 }
-  ];
-
-  gameState.enemyCastleArcherTimers.forEach((timer, idx) => {
-    gameState.enemyCastleArcherAnim[idx] = Math.max(0, gameState.enemyCastleArcherAnim[idx] - dt * 2.5);
-    let t = timer - dt;
-    if (t <= 0) {
-      let target = null;
-      let bestDist = castleRange;
-      for (const u of gameState.units) {
-        if (u.team === 'player' && u.hp > 0) {
-          const d = (rightCastleX - 40) - u.x;
-          if (d <= bestDist) {
-            bestDist = d;
-            target = u;
-          }
-        }
-      }
-      if (target) {
-        t = archerType.atkCooldown;
-        gameState.enemyCastleArcherAnim[idx] = 1.0;
-        const pos = eTurretPositions[idx];
-        gameState.projectiles.push({
-          team: 'enemy',
-          sourceUnitTypeId: 'castle_archers',
-          projType: 'arrow',
-          startX: pos.x,
-          startY: pos.y,
-          x: pos.x,
-          y: pos.y,
-          prevX: pos.x,
-          prevY: pos.y,
-          targetUnitRef: target,
-          targetIsCastle: false,
-          targetX: target.x,
-          targetY: getUnitModelCenterY(target),
-          progress: 0,
-          speed: archerType.projectileSpeed * 1.15,
-          damage: eArcherStats.atk,
-          splash: 0,
-          arcHeight: 36
-        });
-      } else {
-        t = 0.2;
-      }
-    }
-    gameState.enemyCastleArcherTimers[idx] = t;
-  });
+  }
 }
 
 function recordPlayerStatDamage(sourceUnitTypeId, actualDamage, killedTarget) {
@@ -204,11 +243,19 @@ function recordPlayerStatDamage(sourceUnitTypeId, actualDamage, killedTarget) {
 // Applies damage to a target unit or castle.
 // If `isRangedAttack` is true and the target is a Knight (`rangedDamageResistance: 0.5`),
 // damage from arrows, bolts, and catapults is reduced by 50%!
-function dealDamageToTarget(attackerTeam, sourceUnitTypeId, target, isCastle, rawDamage, attackerPos = null, isRangedAttack = false) {
+function dealDamageToTarget(attackerTeam, sourceUnitTypeId, target, isCastle, rawDamage, attackerPos = null, isRangedAttack = false, srcTypeId = null) {
   let modifiedDamage = rawDamage;
+  // `srcTypeId` is the real unit type when the statistics row differs (castle garrison shots)
+  const srcDef = UNIT_TYPES.find(t => t.id === (srcTypeId || sourceUnitTypeId));
 
-  if (!isCastle && isRangedAttack && target && target.type && target.type.rangedDamageResistance) {
-    modifiedDamage = rawDamage * (1 - target.type.rangedDamageResistance);
+  if (!isCastle && target && target.type && srcDef) {
+    // type bonuses: spearmen vs cavalry, fire vs catapults
+    const bonus = srcDef.bonusVs && srcDef.bonusVs[target.type.id];
+    if (bonus) modifiedDamage *= bonus;
+  }
+  if (!isCastle && isRangedAttack && target && target.type && target.type.rangedDamageResistance &&
+      !(srcDef && srcDef.ignoreArmor)) {
+    modifiedDamage *= (1 - target.type.rangedDamageResistance);
   }
 
   const intDamage = Math.max(1, Math.round(modifiedDamage));
@@ -251,7 +298,6 @@ function dealDamageToTarget(attackerTeam, sourceUnitTypeId, target, isCastle, ra
     recordPlayerStatDamage(sourceUnitTypeId, effectiveStatDmg, justKilled);
   }
 
-  target.hitFlash = 0.16;
   spawnHitParticles(target.x, getUnitModelCenterY(target), '#fef08a', 4);
   if (attackerPos) {
     spawnClashStarburst((attackerPos.x + target.x) * 0.5, (attackerPos.y + target.y) * 0.5 - 12);
@@ -265,8 +311,9 @@ function updateBattlefield(dt) {
   const rightGateX = rightCastleX - 54;
   const maxLaneOffset = ROAD_HALF_WIDTH - 10;
 
-  // Castle defensive archers shoot (3 per castle, 2x range)
-  updateCastleArchers(dt);
+  // Castle garrison shoots, commander aura is refreshed
+  updateCastleDefenders(dt);
+  updateInspiration(dt);
 
   const playerUnits = gameState.units.filter(u => u.team === 'player' && u.hp > 0).sort((a, b) => b.x - a.x);
   const enemyUnits = gameState.units.filter(u => u.team === 'enemy' && u.hp > 0).sort((a, b) => a.x - b.x);
@@ -340,7 +387,6 @@ function updateBattlefield(dt) {
   for (const u of gameState.units) {
     if (u.hp <= 0) continue;
 
-    if (u.hitFlash > 0) u.hitFlash = Math.max(0, u.hitFlash - dt);
     if (u.attackAnim > 0) u.attackAnim = Math.max(0, u.attackAnim - dt * 2.8);
     u.atkTimer = Math.max(0, u.atkTimer - dt);
 
@@ -382,6 +428,7 @@ function updateBattlefield(dt) {
           gameState.projectiles.push({
             team: u.team,
             sourceUnitTypeId: u.type.id,
+            srcType: u.type.id,
             projType: u.type.projectileType,
             startX,
             startY,
@@ -395,9 +442,10 @@ function updateBattlefield(dt) {
             targetY,
             progress: 0,
             speed: u.type.projectileSpeed,
-            damage: u.atk,
+            damage: effectiveAtk(u),
             splash: u.type.splash || 0,
-            arcHeight: u.type.projectileType === 'boulder' ? 80 : (u.type.projectileType === 'arrow' ? 26 : 8)
+            multiTarget: u.type.multiTarget || 0,
+            arcHeight: u.type.projectileType === 'boulder' ? 80 : (u.type.projectileType === 'arrow' ? 26 : (u.type.projectileType === 'fireball' ? 16 : 8))
           });
         } else {
           pendingMeleeHits.push({
@@ -406,7 +454,7 @@ function updateBattlefield(dt) {
             attackerPos: { x: u.x, y: u.y },
             target: singleTargetObj,
             isCastle: targetIsCastle,
-            damage: u.atk
+            damage: effectiveAtk(u)
           });
         }
       }
@@ -430,6 +478,12 @@ function updateBattlefield(dt) {
         if (closestDx - desiredMove < minStopDistX) {
           desiredMove = Math.max(0, closestDx - minStopDistX);
         }
+      }
+
+      // Support units (the commander) trail behind the army's front line instead of leading the charge
+      if (u.type.isSupport) {
+        const lead = sameTeamSorted.find(a => !a.type.isSupport);
+        if (!lead || (lead.x - u.x) * dir < 85) desiredMove = 0;
       }
 
       // Friendly overtaking around allies
@@ -512,24 +566,43 @@ function updateBattlefield(dt) {
       const foes = gameState.units.filter(u => u.team !== p.team && u.hp > 0);
       const enemyGateX = p.team === 'player' ? rightGateX : leftGateX;
 
-      if (p.splash > 0) {
+      if (p.projType === 'fireball') {
+        // Fireball: burns the target and up to two more enemies close to it. Ignores armour.
+        const primary = (p.targetUnitRef && p.targetUnitRef.hp > 0) ? p.targetUnitRef : null;
+        if (primary) {
+          const extra = foes
+            .filter(f => f !== primary)
+            .map(f => ({ f, d: Math.hypot(f.x - primary.x, f.y - primary.y) }))
+            .filter(o => o.d <= 85)
+            .sort((a, b) => a.d - b.d)
+            .slice(0, Math.max(0, (p.multiTarget || 3) - 1))
+            .map(o => o.f);
+          [primary, ...extra].forEach(t => {
+            spawnClashStarburst(t.x, getUnitModelCenterY(t), 'fire');
+            spawnHitParticles(t.x, getUnitModelCenterY(t), '#ff9a1f', 6);
+            dealDamageToTarget(p.team, p.sourceUnitTypeId, t, false, p.damage, null, true, p.srcType);
+          });
+        } else if (p.targetIsCastle || Math.abs(p.targetX - enemyGateX) <= 45) {
+          dealDamageToTarget(p.team, p.sourceUnitTypeId, p.team === 'player' ? 'enemyCastle' : 'playerCastle', true, p.damage, null, true, p.srcType);
+        }
+      } else if (p.splash > 0) {
         // Catapult boulder AoE damage (50% reduced against Knights!)
         spawnHitParticles(p.targetX, p.targetY, '#f97316', 12);
         spawnClashStarburst(p.targetX, p.targetY, 'boulder');
         foes.forEach(f => {
           if (Math.abs(f.x - p.targetX) <= p.splash + f.type.radius) {
-            dealDamageToTarget(p.team, p.sourceUnitTypeId, f, false, p.damage, null, true);
+            dealDamageToTarget(p.team, p.sourceUnitTypeId, f, false, p.damage, null, true, p.srcType);
           }
         });
         if (Math.abs(p.targetX - enemyGateX) <= p.splash + 30) {
-          dealDamageToTarget(p.team, p.sourceUnitTypeId, p.team === 'player' ? 'enemyCastle' : 'playerCastle', true, p.damage, null, true);
+          dealDamageToTarget(p.team, p.sourceUnitTypeId, p.team === 'player' ? 'enemyCastle' : 'playerCastle', true, p.damage, null, true, p.srcType);
         }
       } else {
         // Single-target arrow or crossbow bolt: hits exact target model on contact!
         if (p.targetUnitRef && p.targetUnitRef.hp > 0) {
-          dealDamageToTarget(p.team, p.sourceUnitTypeId, p.targetUnitRef, false, p.damage, null, true);
+          dealDamageToTarget(p.team, p.sourceUnitTypeId, p.targetUnitRef, false, p.damage, null, true, p.srcType);
         } else if (p.targetIsCastle || Math.abs(p.targetX - enemyGateX) <= 45) {
-          dealDamageToTarget(p.team, p.sourceUnitTypeId, p.team === 'player' ? 'enemyCastle' : 'playerCastle', true, p.damage, null, true);
+          dealDamageToTarget(p.team, p.sourceUnitTypeId, p.team === 'player' ? 'enemyCastle' : 'playerCastle', true, p.damage, null, true, p.srcType);
         }
       }
 

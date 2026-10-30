@@ -116,6 +116,7 @@ Art.icons = (function () {
 
   const unitCard = unitId => {
     if (unitId === 'buy_cards') return img(ICONS.buy_cards, 'unit-portrait');
+    if (unitId === 'castle_up') return img(ICONS.castle_max_hp, 'unit-portrait');
     return `<img class="unit-portrait" alt="" draggable="false" src="${Art.units.portrait(unitId, 'player', 96)}">`;
   };
 

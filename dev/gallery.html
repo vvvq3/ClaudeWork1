@@ -18,7 +18,9 @@
 <script src="../js/art/units.js"></script>
 <script>
 Art.dpr = 2;
-const TYPES = ['peasant', 'archer', 'knight', 'crossbowman', 'cavalry', 'catapult'];
+const TYPES = ['peasant', 'spearman', 'archer', 'knight', 'crossbowman', 'mage', 'commander', 'cavalry', 'catapult'];
+const WIDE = ['cavalry', 'catapult', 'commander', 'spearman'];
+const only = new URLSearchParams(location.search).get('only');
 const root = document.getElementById('root');
 const cells = [];
 // poses shown for each type: walk (animated), ready, windup, strike frames
@@ -32,14 +34,15 @@ const STATES = [
   { n: 'hit .5', f: t => ({ ph: 0, walk: 0, wind: 0, strike: 0.5, t, seed: 1 }) },
 ];
 const SCALE = +(new URLSearchParams(location.search).get('s') || 2);
-for (const team of ['player', 'enemy']) {
+for (const team of (new URLSearchParams(location.search).get('team') || 'player,enemy').split(',')) {
   const h = document.createElement('h3'); h.textContent = team; root.appendChild(h);
   for (const id of TYPES) {
     const row = document.createElement('div'); row.className = 'row'; root.appendChild(row);
-    const wide = id === 'cavalry' || id === 'catapult';
+    const wide = WIDE.includes(id);
+    if (only && !only.split(',').includes(id)) continue;
     for (const st of STATES) {
       const c = document.createElement('canvas');
-      const W = (wide ? 150 : 100) , H = wide ? 130 : 100;
+      const W = wide ? 160 : 100, H = (id === 'commander' ? 130 : wide ? 130 : 100);
       c.width = W * SCALE * 2; c.height = H * SCALE * 2; c.style.width = W * SCALE + 'px'; c.style.height = H * SCALE + 'px';
       row.appendChild(c);
       cells.push({ c, id, team, st, W, H, g: c.getContext('2d') });
@@ -51,7 +54,7 @@ function frame(ms) {
   for (const k of cells) {
     const g = k.g; g.setTransform(1,0,0,1,0,0); g.clearRect(0,0,k.c.width,k.c.height);
     const s = SCALE * 2;
-    g.setTransform(s, 0, 0, s, (k.W / 2 - 4) * s, (k.H - 8) * s);
+    g.setTransform(s, 0, 0, s, (k.W / 2 - (WIDE.includes(k.id) ? 14 : 4)) * s, (k.H - 8) * s);
     const dir = k.team === 'player' ? 1 : -1;
     g.scale(dir, 1);
     g.fillStyle = 'rgba(20,45,12,.3)'; g.beginPath(); g.ellipse(0, 1, 18, 5, 0, 0, 7); g.fill();
