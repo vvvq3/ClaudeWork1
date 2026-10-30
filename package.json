@@ -1,0 +1,14 @@
+{
+  "name": "castle-battle",
+  "version": "1.0.0",
+  "description": "Битва Замков — браузерная стратегия: красные против синих",
+  "private": true,
+  "scripts": {
+    "build:css": "tailwindcss -c tailwind.config.js -i src/tailwind.input.css -o css/tailwind.css --minify",
+    "watch:css": "tailwindcss -c tailwind.config.js -i src/tailwind.input.css -o css/tailwind.css --watch",
+    "start": "python3 -m http.server 8000"
+  },
+  "devDependencies": {
+    "tailwindcss": "3.4.17"
+  }
+}
